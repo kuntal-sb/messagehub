@@ -26,10 +26,10 @@ use Auth;
 use Session;
 
 /**
- * Class NotificationMessageRepository
+ * Class MessagehubRepository
  * @package App\Http\Repositories
  */
-class NotificationMessageRepository extends BaseRepository
+class MessagehubRepository extends BaseRepository
 {
 
     /**
@@ -41,7 +41,7 @@ class NotificationMessageRepository extends BaseRepository
     private $duplicateDevices = [];
 
     /**
-     * NotificationMessageRepository constructor.
+     * MessagehubRepository constructor.
      * @param NotificationMessage $notificationMessage
      * @param Connection $eloquentORM
      */
@@ -576,10 +576,11 @@ class NotificationMessageRepository extends BaseRepository
      * @param $messageIds
      * @return collection 
      */
-    public function getInvoices()
+    public function getInvoices($role = '')
     {
+        $role = ($role =='')?Session::get('role'):$role;
         $query = NotificationInvoice::select('id','user_id','paid_by', 'invoice_no','message_count','amount','tax','discount','start_date','end_date','status');
-        switch (Session::get('role')) {
+        switch ($role) {
             case 'Employer':
                 $query->where('user_id',Auth::user()->id);
                 break;

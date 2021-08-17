@@ -2,7 +2,7 @@
 
 namespace Strivebenifits\Messagehub;
 
-use Strivebenifits\Messagehub\Repositories\NotificationMessageRepository;
+use Strivebenifits\Messagehub\Repositories\messagehubRepository;
 use Exception;
 use Log;
 use Validator;
@@ -12,19 +12,19 @@ use Carbon\Carbon;
 class MessagehubManager
 {
 	/**
-     * @var NotificationMessageRepository
+     * @var messagehubRepository
      */
-    private $notificationMessageRepository;
+    private $messagehubRepository;
 	
 	/**
      * NotificationMessageManager constructor.
-     * @param NotificationMessageRepository $notificationMessageRepository
+     * @param messagehubRepository $messagehubRepository
      */
     public function __construct(
-        NotificationMessageRepository $notificationMessageRepository
+        MessagehubRepository $messagehubRepository
     )
     {
-        $this->notificationMessageRepository = $notificationMessageRepository;
+        $this->messagehubRepository = $messagehubRepository;
     }
 
     /**
@@ -35,7 +35,7 @@ class MessagehubManager
     public function getAllNotifications($requestData)
     {
         try {
-            return $this->notificationMessageRepository->getAllNotifications();
+            return $this->messagehubRepository->getAllNotifications();
         } catch (Exception $e) {
             Log::error($e->getMessage());
         }
@@ -48,7 +48,7 @@ class MessagehubManager
      */
     public function getNotificationById($id)
     {
-        return $this->notificationMessageRepository->getNotificationById($id);
+        return $this->messagehubRepository->getNotificationById($id);
     }
 
     /**
@@ -61,11 +61,11 @@ class MessagehubManager
     public function evalTxtNotifications($request, $employerId, $brokerId)
     {
         try{
-            $transactionId = $this->notificationMessageRepository->generateTransactionId($request->notification_type);
+            $transactionId = $this->messagehubRepository->generateTransactionId($request->notification_type);
             if($request->input('schedule_type') == 'schedule'){
-                extract($this->notificationMessageRepository->scheduleNotification($employerId,$brokerId,$request, 'text', ''));
+                extract($this->messagehubRepository->scheduleNotification($employerId,$brokerId,$request, 'text', ''));
             }else{
-                extract($this->notificationMessageRepository->processTxtNotifications($request, $transactionId));
+                extract($this->messagehubRepository->processTxtNotifications($request, $transactionId));
             }
             
         }catch (Exception $e){
@@ -114,16 +114,16 @@ class MessagehubManager
                 $thumbnail_path = '';
             }
 
-            $transactionId = $this->notificationMessageRepository->generateTransactionId($request->notification_type);
+            $transactionId = $this->messagehubRepository->generateTransactionId($request->notification_type);
 
             //Check if the schedule option is selected. If schedule is selected, then store the schedule
             if($request->input('schedule_type') == 'schedule'){
-                extract($this->notificationMessageRepository->scheduleNotification($employerId,$brokerId,$request, 'in-app', $thumbnail_path));
+                extract($this->messagehubRepository->scheduleNotification($employerId,$brokerId,$request, 'in-app', $thumbnail_path));
             }else{
                 if(!is_array($employerId)){
                     $employerId = array($employerId);
                 }
-                extract($this->notificationMessageRepository->processPushNotification($employerId,$brokerId,$request,$thumbnail_path, $transactionId));
+                extract($this->messagehubRepository->processPushNotification($employerId,$brokerId,$request,$thumbnail_path, $transactionId));
             }
         } catch (Exception $e) {
             Log::error($e);
@@ -142,7 +142,7 @@ class MessagehubManager
     {
         $notification = [];
         if(!empty($request->id)){
-            $notification = $this->notificationMessageRepository->getNotificationById($request->id);
+            $notification = $this->messagehubRepository->getNotificationById($request->id);
         }
 
         return $notification;
@@ -163,10 +163,10 @@ class MessagehubManager
             $fcm_key = $data['fcm_key'];
 
             //Get badge count
-            $unreadCount = $this->notificationMessageRepository->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0));
+            $unreadCount = $this->messagehubRepository->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0));
             $badgeCount = $unreadCount + 1; // Add one for the new message
             
-            $logID = $this->notificationMessageRepository->insertNotificationLog($data, $message_id);
+            $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
 
             //If the device is ios, first hit APNS.
             if($data['device_type'] == 'appNameIOS'){
@@ -175,7 +175,7 @@ class MessagehubManager
 
                     $iosPayload = array('badge' => $badgeCount,'custom' => array('customData' => array('notification_id' => $logID)));
                     $app_store_target = $data['app_store_target'];
-                    extract($this->notificationMessageRepository->sendApns($url,$app_store_target,$badgeCount,$logID,$pushMessage,$data['ios_certificate_file']));
+                    extract($this->messagehubRepository->sendApns($url,$app_store_target,$badgeCount,$logID,$pushMessage,$data['ios_certificate_file']));
                     if($status == 200){
                         $is_success = 1;
                         $exception_message = '';
@@ -186,13 +186,13 @@ class MessagehubManager
                 }
                 catch(Exception $e){
                     //If exception occurred, then hit FCM for the old live apps.
-                    $fcmPush = $this->notificationMessageRepository->fcmPush($data,$badgeCount,$logID);
+                    $fcmPush = $this->messagehubRepository->fcmPush($data,$badgeCount,$logID);
                     Log::info(json_encode($fcmPush));
                     $is_success = $fcmPush['is_success'];
                     $exception_message = $fcmPush['exception_message'];
                 }
             }else{//For android hit fcm push notification
-                $fcmPush = $this->notificationMessageRepository->fcmPush($data,$badgeCount,$logID);
+                $fcmPush = $this->messagehubRepository->fcmPush($data,$badgeCount,$logID);
                 Log::info(json_encode($fcmPush));
                 $is_success = $fcmPush['is_success'];
                 $exception_message = $fcmPush['exception_message'];
@@ -205,7 +205,7 @@ class MessagehubManager
                     'updated_at'=>Carbon::now()
                     );
 
-            $this->notificationMessageRepository->updateNotificationLog($logID, $update_log_data);
+            $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
             if($is_success == 0){
                 Log::info($exception_message);
                 throw new Exception($exception_message);
@@ -223,28 +223,28 @@ class MessagehubManager
     public function getNotificationLogCount($id, $notificationType)
     {   
         if($notificationType == 'in-app'){
-            return (array) $this->notificationMessageRepository->getPushNotificationLogCount($id);
+            return (array) $this->messagehubRepository->getPushNotificationLogCount($id);
         }else{
-            return (array) $this->notificationMessageRepository->getTextNotificationLogCount($id);
+            return (array) $this->messagehubRepository->getTextNotificationLogCount($id);
         }
     }
 
     public function generateRemainingInvoice($startDate, $endDate)
     {
-        $notifications =  $this->notificationMessageRepository->getRemainingInvoice($startDate, $endDate)
+        $notifications =  $this->messagehubRepository->getRemainingInvoice($startDate, $endDate)
                             ->whereIn('notification_type',['text','in-app-text'])
                             ->get();
 
-        $lastId = $this->notificationMessageRepository->getLastId();
+        $lastId = $this->messagehubRepository->getLastId();
         foreach ($notifications as $key => $remainingNotifications) {
             $messageIds = explode(',',$remainingNotifications->messageids);
             
             //Get Total Message Count for given messageIds
-            $message_count =  $this->notificationMessageRepository->getSmsSent($messageIds)->count();
+            $message_count =  $this->messagehubRepository->getSmsSent($messageIds)->count();
         
 
             //Calculate Total Cost which needs to be charged to user based on used credit
-            $amount = $this->notificationMessageRepository->getTxtAmount($message_count);
+            $amount = $this->messagehubRepository->getTxtAmount($message_count);
 
             //generate Invoice no
             $invoiceNo = 'INV-'.date('Y').'-'.str_pad(++$lastId, 6, '0', STR_PAD_LEFT);
@@ -260,37 +260,37 @@ class MessagehubManager
                 'status' => 'pending',
             ];
             
-            $invoiceId =  $this->notificationMessageRepository->insertInvoice($invoiceToCreate);
+            $invoiceId =  $this->messagehubRepository->insertInvoice($invoiceToCreate);
 
-            $this->notificationMessageRepository->updateRecordByIds($messageIds, ['invoice_id' => $invoiceId]);            
+            $this->messagehubRepository->updateRecordByIds($messageIds, ['invoice_id' => $invoiceId]);            
         }
     }
 
     public function getUsedCredit($startDate, $endDate)
     {
-        $notifications =  $this->notificationMessageRepository->getUsedCredit($startDate, $endDate)->get();
+        $notifications =  $this->messagehubRepository->getUsedCredit($startDate, $endDate)->get();
         $message_count = 0;
         foreach ($notifications as $key => $remainingNotifications) {
             $messageIds = explode(',',$remainingNotifications->messageids);
             //Get Total Message Count for given messageIds
-            $message_count +=  $this->notificationMessageRepository->getSmsSent($messageIds)->count();
+            $message_count +=  $this->messagehubRepository->getSmsSent($messageIds)->count();
         }
         return $message_count;
     }
 
     public function getInvoices()
     {
-        return $this->notificationMessageRepository->getInvoices()->get();
+        return $this->messagehubRepository->getInvoices()->get();
     }
 
     public function getRoleNotification($employer_id=null)
     {
-        return $this->notificationMessageRepository->getRoleNotification($employer_id);
+        return $this->messagehubRepository->getRoleNotification($employer_id);
     }
 
     public function getEmployeeByReferer($type, $employers, $selectedEmployees=array(), $emails = array())
     {
-        return $this->notificationMessageRepository->getEmployeeByReferer($type, $employers, $selectedEmployees, $emails);
+        return $this->messagehubRepository->getEmployeeByReferer($type, $employers, $selectedEmployees, $emails);
     }
 
     /* processScheduledNotifications (Single Record)
@@ -300,14 +300,14 @@ class MessagehubManager
     public function processScheduledNotifications($notifications)
     {
         try {
-            $transactionId = $this->notificationMessageRepository->generateTransactionId($notifications->notification_type);
+            $transactionId = $this->messagehubRepository->generateTransactionId($notifications->notification_type);
                     
             if($notifications->notification_type == 'in-app'){
-                $this->notificationMessageRepository->processPushNotification(json_decode($notifications->employer_id), $notifications->broker_id, $notifications,$notifications->thumbnail, $transactionId, 'command');
+                $this->messagehubRepository->processPushNotification(json_decode($notifications->employer_id), $notifications->broker_id, $notifications,$notifications->thumbnail, $transactionId, 'command');
             }
 
             if($notifications->notification_type == 'text'){
-                $this->notificationMessageRepository->processTxtNotifications($notifications, $transactionId);
+                $this->messagehubRepository->processTxtNotifications($notifications, $transactionId);
             }
 
             //Remove record from scheduled list
