@@ -52,19 +52,24 @@ class MessagehubRepository extends BaseRepository
     }
 
     /**
-     * getAllNotifications.
+     * getAllNotificationsByRole.
      * @param 
      * @return  Query Collection
      */
-    public function getAllNotifications()
+    public function getAllNotificationsByRole($role)
     {
-        if(Session::get('role') == 'Employer'){
+        if($role == 'Employer'){
             $notifications = $this->model->where('employer_id',Auth::user()->id)
-                                ->select(['id','message','notification_type','created_at'])
+                                ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
+                                ->orderBy('created_at', 'desc');
+        if($role == 'Broker'){
+            $notifications = $this->model->join('users','users.id','=','notification_messages.employer_id')
+                                ->where('users.referer_id',Auth::user()->id)
+                                ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
                                 ->orderBy('created_at', 'desc');
         }else{
             $notifications = $this->model
-                                ->select(['id','message','notification_type','created_at'])
+                                ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
                                 ->orderBy('created_at', 'desc');
         }
         return $notifications;

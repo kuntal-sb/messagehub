@@ -8,6 +8,7 @@ use Log;
 use Validator;
 use App\Http\Services\S3Service;
 use Carbon\Carbon;
+use Session;
 
 class MessagehubManager
 {
@@ -28,14 +29,14 @@ class MessagehubManager
     }
 
     /**
-     * getAllNotifications.
-     * @param 
+     * getAllNotificationsByRole.
+     * @param $role
      * @return  json data
      */
-    public function getAllNotifications($requestData)
+    public function getAllNotificationsByRole($role)
     {
         try {
-            return $this->messagehubRepository->getAllNotifications();
+            return $this->messagehubRepository->getAllNotificationsByRole($role);
         } catch (Exception $e) {
             Log::error($e->getMessage());
         }
