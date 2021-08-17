@@ -2,6 +2,7 @@
 
 namespace Strivebenifits\Messagehub\Repositories;
 
+use App\Http\Repositories\BaseRepository;
 use App\Models\NotificationMessage;
 use App\Models\User;
 use App\Models\PushNotificationLog;
