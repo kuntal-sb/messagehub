@@ -13,7 +13,7 @@ use Validator;
 use App\Http\Services\S3Service;
 use Carbon\Carbon;
 
-class Messagehub
+class MessagehubManager
 {
 	/**
      * @var NotificationMessageRepository
