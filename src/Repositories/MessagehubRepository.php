@@ -56,16 +56,17 @@ class MessagehubRepository extends BaseRepository
      * @param 
      * @return  Query Collection
      */
-    public function getAllNotificationsByRole($role)
+    public function getAllNotificationsByRole($role, $uid=null)
     {
+        $uid = ($uid)?$uid:Auth::user()->id;
         if($role == 'Employer'){
-            $notifications = $this->model->where('employer_id',Auth::user()->id)
+            $notifications = $this->model->where('employer_id',$uid)
                                 ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
                                 ->orderBy('created_at', 'desc');
         }
         else if($role == 'Broker'){
             $notifications = $this->model->join('users','users.id','=','notification_messages.employer_id')
-                                ->where('users.referer_id',Auth::user()->id)
+                                ->where('users.referer_id',$uid)
                                 ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
                                 ->orderBy('created_at', 'desc');
         }else{

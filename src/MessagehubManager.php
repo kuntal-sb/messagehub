@@ -32,10 +32,10 @@ class MessagehubManager
      * @param $role
      * @return  json data
      */
-    public function getAllNotificationsByRole($role)
+    public function getAllNotificationsByRole($role, $uid=null)
     {
         try {
-            return $this->messagehubRepository->getAllNotificationsByRole($role);
+            return $this->messagehubRepository->getAllNotificationsByRole($role, $uid);
         } catch (Exception $e) {
             Log::error($e->getMessage());
         }
