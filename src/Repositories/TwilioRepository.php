@@ -2,8 +2,8 @@
 
 namespace Strivebenifits\Messagehub\Repositories;
 use App\Http\Repositories\BaseRepository;
-use App\Entities\TwilioResponseEntity;
-use App\Models\TwilioWebhooksDetails;
+use Strivebenifits\Messagehub\Entities\TwilioResponseEntity;
+use Strivebenifits\Messagehub\Models\TwilioWebhooksDetails;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Connection;
