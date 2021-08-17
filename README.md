@@ -35,8 +35,7 @@ composer require strivebenifits/messagehub
 ## Usage
 
 ```php
-$messagehub = new Strivebenifits\Messagehub();
-echo $messagehub->echoPhrase('Hello, Strivebenifits!');
+$ php artisan vendor:publish --tag=messagehub-config --force
 ```
 
 ## Testing

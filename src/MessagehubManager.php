@@ -231,13 +231,13 @@ class MessagehubManager
 
     public function generateRemainingInvoice($startDate, $endDate)
     {
-        $notifications =  $this->messagehubRepository->getRemainingInvoice($startDate, $endDate)
+        $notificationLists =  $this->messagehubRepository->getRemainingInvoice($startDate, $endDate)
                             ->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])
                             ->get();
 
         $lastId = $this->messagehubRepository->getLastId();
-        foreach ($notifications as $key => $remainingNotifications) {
-            $messageIds = explode(',',$remainingNotifications->messageids);
+        foreach ($notificationLists as $key => $notification) {
+            $messageIds = explode(',',$notification->messageids);
             
             //Get Total Message Count for given messageIds
             $message_count =  $this->messagehubRepository->getSmsSent($messageIds)->count();
@@ -250,7 +250,7 @@ class MessagehubManager
             $invoiceNo = 'INV-'.date('Y').'-'.str_pad(++$lastId, 6, '0', STR_PAD_LEFT);
 
             $invoiceToCreate = [
-                'user_id' => $remainingNotifications->employer_id,
+                'user_id' => $notification->employer_id,
                 'invoice_no' => $invoiceNo,
                 'message_count' => $message_count,
                 'amount' => $amount,
@@ -260,9 +260,11 @@ class MessagehubManager
                 'status' => 'pending',
             ];
             
-            $invoiceId =  $this->messagehubRepository->insertInvoice($invoiceToCreate);
+            $invoice =  $this->messagehubRepository->insertInvoice($invoiceToCreate);
 
-            $this->messagehubRepository->updateRecordByIds($messageIds, ['invoice_id' => $invoiceId]);            
+            $this->messagehubRepository->updateRecordByIds($messageIds, ['invoice_id' => $invoice->id]);
+
+            event(new \App\Events\InvoiceCreatedBroadcastEvent($notification->user, $invoice));
         }
     }
 

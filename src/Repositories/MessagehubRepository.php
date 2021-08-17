@@ -547,8 +547,7 @@ class MessagehubRepository extends BaseRepository
      */
     public function insertInvoice($data)
     {
-        $invoiceId =  NotificationInvoice::create($data);
-        return $invoiceId->id;
+        return NotificationInvoice::create($data);
     }
 
     /**
