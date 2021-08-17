@@ -8,7 +8,6 @@ use Log;
 use Validator;
 use App\Http\Services\S3Service;
 use Carbon\Carbon;
-use Session;
 
 class MessagehubManager
 {
@@ -294,6 +293,11 @@ class MessagehubManager
     public function getEmployeeByReferer($type, $employers, $selectedEmployees=array(), $emails = array())
     {
         return $this->messagehubRepository->getEmployeeByReferer($type, $employers, $selectedEmployees, $emails);
+    }
+
+    public function getEmployerList($brokerList, $selectedEmployers)
+    {
+        return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers);
     }
 
     /* processScheduledNotifications (Single Record)

@@ -710,4 +710,36 @@ class MessagehubRepository extends BaseRepository
     {
         return EmployeeDemographic::whereIn('user_id',$users)->select('user_id as id','phone_number')->get()->toArray();
     }
+
+    /**return Get the list of employer based on given broker array.
+     *
+     * @param Array $brokers
+     * @return Array $selectedEmployers
+     */
+    public function getEmployerList($brokers, $selectedEmployers=array(), $emails = array())
+    {
+        $employerData = [];
+        if(!is_array($brokers)){
+            $brokers = [$brokers];
+        }
+        foreach($brokers as $brokerId){
+            $query = User::join('assigned_roles','users.id','=','assigned_roles.user_id')
+                        ->join('roles','roles.id','=','assigned_roles.role_id')
+                        ->where('roles.name','=', User::EMPLOYER)
+                        ->where('users.referer_id','=',$brokerId)
+                        ->enabled()
+                        ->active()
+                        ->select('users.id','users.company_name','users.email','users.last_login');
+            if(!empty($selectedEmployers)){
+                $query = $query->whereIn('users.id',$selectedEmployers);
+            }
+            //filter record based on email if provided
+            if(!empty($emails)){
+                $query = $query->whereIn('users.email',$emails);
+            }
+            $employerData = $query->get()->toArray();
+        }
+
+        return $employerData;
+    }
 }
