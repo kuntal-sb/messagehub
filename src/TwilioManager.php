@@ -2,8 +2,8 @@
 
 namespace Strivebenifits\Messagehub;
 
-use App\Entities\TwilioResponseEntity;
-use App\Facades\TwilioClient;
+use Strivebenifits\Messagehub\Entities\TwilioResponseEntity;
+use Strivebenifits\Messagehub\Facades\TwilioClient;
 use Strivebenifits\Messagehub\Repositories\TwilioRepository;
 use Exception;
 use Log;
