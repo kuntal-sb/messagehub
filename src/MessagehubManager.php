@@ -63,7 +63,7 @@ class MessagehubManager
         try{
             $transactionId = $this->messagehubRepository->generateTransactionId($request->notification_type);
             if($request->input('schedule_type') == 'schedule'){
-                extract($this->messagehubRepository->scheduleNotification($employerId,$brokerId,$request, 'text', ''));
+                extract($this->messagehubRepository->scheduleNotification($employerId,$brokerId,$request, config('messagehub.notification.type.TEXT'), ''));
             }else{
                 extract($this->messagehubRepository->processTxtNotifications($request, $transactionId));
             }
@@ -118,7 +118,7 @@ class MessagehubManager
 
             //Check if the schedule option is selected. If schedule is selected, then store the schedule
             if($request->input('schedule_type') == 'schedule'){
-                extract($this->messagehubRepository->scheduleNotification($employerId,$brokerId,$request, 'in-app', $thumbnail_path));
+                extract($this->messagehubRepository->scheduleNotification($employerId,$brokerId,$request, config('messagehub.notification.type.INAPP'), $thumbnail_path));
             }else{
                 if(!is_array($employerId)){
                     $employerId = array($employerId);
@@ -222,7 +222,7 @@ class MessagehubManager
      */
     public function getNotificationLogCount($id, $notificationType)
     {   
-        if($notificationType == 'in-app'){
+        if($notificationType == config('messagehub.notification.type.INAPP')){
             return (array) $this->messagehubRepository->getPushNotificationLogCount($id);
         }else{
             return (array) $this->messagehubRepository->getTextNotificationLogCount($id);
@@ -232,7 +232,7 @@ class MessagehubManager
     public function generateRemainingInvoice($startDate, $endDate)
     {
         $notifications =  $this->messagehubRepository->getRemainingInvoice($startDate, $endDate)
-                            ->whereIn('notification_type',['text','in-app-text'])
+                            ->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])
                             ->get();
 
         $lastId = $this->messagehubRepository->getLastId();
@@ -302,11 +302,11 @@ class MessagehubManager
         try {
             $transactionId = $this->messagehubRepository->generateTransactionId($notifications->notification_type);
                     
-            if($notifications->notification_type == 'in-app'){
+            if($notifications->notification_type == config('messagehub.notification.type.INAPP')){
                 $this->messagehubRepository->processPushNotification(json_decode($notifications->employer_id), $notifications->broker_id, $notifications,$notifications->thumbnail, $transactionId, 'command');
             }
 
-            if($notifications->notification_type == 'text'){
+            if($notifications->notification_type == config('messagehub.notification.type.TEXT')){
                 $this->messagehubRepository->processTxtNotifications($notifications, $transactionId);
             }
 

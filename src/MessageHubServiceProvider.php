@@ -14,7 +14,7 @@ class MessageHubServiceProvider extends ServiceProvider
     {
         // $this->loadRoutesFrom(__DIR__.'/routes.php');
         // $this->loadMigrationsFrom(__DIR__.'/migrations');
-        // $this->loadViewsFrom(__DIR__.'/views', 'todolist');
+        // $this->loadViewsFrom(__DIR__.'/views', 'messagehub');
         // $this->publishes([
         //     __DIR__.'/views' => base_path('resources/views/strivebenifits/messagehub'),
         // ]);

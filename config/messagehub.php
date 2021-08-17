@@ -1,8 +1,8 @@
 <?php
 
 return [
-    'NOTIFICATION' => [
-        'TYPE' => [
+    'notification' => [
+        'type' => [
             'INAPP' => 'in-app',
             'TEXT' => 'text',
             'INAPPTEXT' => 'in-app-text',

@@ -113,10 +113,10 @@ class MessagehubRepository extends BaseRepository
 
             foreach($employerList as $employerId){
                 if(empty($employees)){
-                    $employees = $this->getEmployeeByReferer('in-app', [$employerId]);
+                    $employees = $this->getEmployeeByReferer(config('messagehub.notification.type.INAPP'), [$employerId]);
                 }
 
-                $notificationMessageId = $this->model->insertNotificationData('in-app', $employerId, $transactionId, $message, $requestData, $thumbnailPath);
+                $notificationMessageId = $this->model->insertNotificationData(config('messagehub.notification.type.INAPP'), $employerId, $transactionId, $message, $requestData, $thumbnailPath);
                 foreach($employees as $employee){
                     $this->dispatchPushNotification($employee, $notificationMessageId, $message, $iosCertificateFile, $androidApi, $fcmKey, $title, $appStoreTarget);
                 }
@@ -208,7 +208,7 @@ class MessagehubRepository extends BaseRepository
         try {
             $message = $this->model->parseMessage($requestData->message);
             $title = ($requestData->title)?$requestData->title:'';
-            $messageId = $this->model->insertNotificationData('text',$employerId, $transactionId, $message, $requestData);
+            $messageId = $this->model->insertNotificationData(config('messagehub.notification.type.TEXT'),$employerId, $transactionId, $message, $requestData);
 
             $smsData = ['employees' => $employees, 'message' => $message, 'employer_id' => $employerId, 'message_id' => $messageId];
 
@@ -354,13 +354,13 @@ class MessagehubRepository extends BaseRepository
 
         $prefix = '';
         switch ($notificationType) {
-            case 'in-app':
+            case config('messagehub.notification.type.INAPP'):
                     $prefix = 'PN';
                 break;
-            case 'text':
+            case config('messagehub.notification.type.TEXT'):
                     $prefix = 'TXT';
                 break;
-            case 'in-app-text':
+            case config('messagehub.notification.type.INAPPTEXT'):
                     $prefix = 'PNTXT';
                 // code...
                 break;
@@ -527,7 +527,7 @@ class MessagehubRepository extends BaseRepository
      */
     public function getUsedCredit($startDate, $endDate)
     {
-        $query = $this->getRemainingInvoice($startDate, $endDate)->whereIn('notification_type',['text','in-app-text']);
+        $query = $this->getRemainingInvoice($startDate, $endDate)->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]);
         switch (Session::get('role')) {
             case 'Employer':
                 $query->where('employer_id',Auth::user()->id);
@@ -673,22 +673,22 @@ class MessagehubRepository extends BaseRepository
             }
 
             //Get only those users who has downloaded app
-            $query->when(in_array($type,['in-app','in-app-text']), function ($q) {
+            $query->when(in_array($type,[config('messagehub.notification.type.INAPP'),config('messagehub.notification.type.INAPPTEXT')]), function ($q) {
                 return $q->getActiveAppUser()
                                 ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type');
             });
 
             //Get only those users with mobile number
-            $query->when(in_array($type,['text','in-app-text']), function ($q) use($type) {
+            $query->when(in_array($type,[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]), function ($q) use($type) {
                 $q->getUserByMobile();
-                if($type =='text'){
+                if($type ==config('messagehub.notification.type.TEXT')){
                     $q->condHasMobile();
                 }
                 return $q->addSelect('employee_demographics.phone_number');
             });
             $employeeData = $query->get()->toArray();
         }
-        if(in_array($type,['text','in-app-text'])){
+        if(in_array($type,[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])){
             foreach($employeeData as &$employee){
                 $employee['phone_number'] = !empty($employee['phone_number'])?decrypt($employee['phone_number']):'';
             }
