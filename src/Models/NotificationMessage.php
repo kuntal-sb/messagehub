@@ -48,14 +48,6 @@ class NotificationMessage extends Model
     }
 
     /**
-     * Get the User
-     */
-    public function user()
-    {
-        return $this->belongsTo(\App\Models\User::class,'user_id','id');
-    }
-
-    /**
      * Insert Record into Notification table
      * @return Return Id of inseted record
      */

@@ -26,4 +26,12 @@ class NotificationInvoice extends Model
         'satus',
         'updated_at',
     ];
+
+    /**
+     * Get the User
+     */
+    public function user()
+    {
+        return $this->belongsTo(\App\Models\User::class,'user_id','id');
+    }
 }
