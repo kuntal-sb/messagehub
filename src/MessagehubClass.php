@@ -2,6 +2,6 @@
 
 namespace Strivebenifits\Messagehub;
 
-class Messagehub
+class MessagehubClass
 {
 }

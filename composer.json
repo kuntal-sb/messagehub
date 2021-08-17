@@ -2,8 +2,7 @@
     "name": "strivebenifits/messagehub",
     "description": "This is my package Messagehub",
     "keywords": [
-        "StriveBenifits",
-        "laravel",
+        "strivebenifits",
         "messagehub"
     ],
     "homepage": "https://github.com/strivebenifits/messagehub",
@@ -16,16 +15,17 @@
         }
     ],
     "require": {
-        "php": "^8.0",
-        "illuminate/contracts": "^8.37"
+        "php": "^8.0"
     },
     "require-dev": {
-        "phpunit/phpunit": "^9.3"
+        "friendsofphp/php-cs-fixer": "^3.0",
+        "phpunit/phpunit": "^9.5",
+        "spatie/ray": "^1.28",
+        "vimeo/psalm": "^4.8"
     },
     "autoload": {
         "psr-4": {
-            "Strivebenifits\\Messagehub\\": "src",
-            "Strivebenifits\\Messagehub\\Database\\Factories\\": "database/factories"
+            "Strivebenifits\\Messagehub\\": "src"
         }
     },
     "autoload-dev": {
@@ -35,21 +35,12 @@
     },
     "scripts": {
         "psalm": "vendor/bin/psalm",
-        "test": "./vendor/bin/testbench package:test --parallel --no-coverage",
-        "test-coverage": "vendor/bin/phpunit --coverage-html coverage"
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage",
+        "format": "vendor/bin/php-cs-fixer fix --allow-risky=yes"
     },
     "config": {
         "sort-packages": true
-    },
-    "extra": {
-        "laravel": {
-            "providers": [
-                "Strivebenifits\\Messagehub\\MessagehubServiceProvider"
-            ],
-            "aliases": {
-                "Messagehub": "Strivebenifits\\Messagehub\\MessagehubFacade"
-            }
-        }
     },
     "minimum-stability": "dev",
     "prefer-stable": true
