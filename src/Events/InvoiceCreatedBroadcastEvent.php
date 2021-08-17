@@ -26,7 +26,7 @@ class InvoiceCreatedBroadcastEvent implements ShouldBroadcastNow
     public function __construct($user,$invoice)
     {
         $this->user = $user;
-        $this->message = 'Your invoice for the period '.date('F Y',strtotime($invoice->start_date).' To .' date('F Y',strtotime($invoice->end_date).' of amount $'.number_format($invoice->amount + $invoice->tax - $invoice->discount,2) }}.' generated. Please check payment History Page';
+        $this->message = 'Your invoice for the period '.date('F Y',strtotime($invoice->start_date)).' To .' date('F Y',strtotime($invoice->end_date)).' of amount $'.number_format($invoice->amount + $invoice->tax - $invoice->discount,2).' generated. Please check payment History Page';
     }
 
     /**
