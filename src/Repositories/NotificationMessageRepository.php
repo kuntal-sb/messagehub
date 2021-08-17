@@ -15,13 +15,13 @@ use Illuminate\Support\Facades\Log;
 use DB;
 use Config;
 use Illuminate\Database\Connection;
-use App\Jobs\sendNotifications;
+use Strivebenifits\Messagehub\Jobs\sendNotifications;
 use phpFCMSBv1\Client;
 use phpFCMSBv1\Notification;
 use phpFCMSBv1\Recipient;
 use phpFCMSBv1\Data;
 use Exception;
-use App\Jobs\sendSms;
+use Strivebenifits\Messagehub\Jobs\sendSms;
 use Auth;
 use Session;
 
