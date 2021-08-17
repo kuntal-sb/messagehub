@@ -292,4 +292,30 @@ class MessagehubManager
     {
         return $this->notificationMessageRepository->getEmployeeByReferer($type, $employers, $selectedEmployees, $emails);
     }
+
+    /* processScheduledNotifications (Single Record)
+    * Add notification to queue for scheduled ones
+    *
+    */
+    public function processScheduledNotifications($notifications)
+    {
+        try {
+            $transactionId = $this->notificationMessageRepository->generateTransactionId($notifications->notification_type);
+                    
+            if($notifications->notification_type == 'in-app'){
+                $this->notificationMessageRepository->processPushNotification(json_decode($notifications->employer_id), $notifications->broker_id, $notifications,$notifications->thumbnail, $transactionId, 'command');
+            }
+
+            if($notifications->notification_type == 'text'){
+                $this->notificationMessageRepository->processTxtNotifications($notifications, $transactionId);
+            }
+
+            //Remove record from scheduled list
+            $notifications->delete();
+            //ActivityLog::getInstance()->createLog($activityMessage);
+            Log::info('Launch was scheduled and deleted successfully');
+        } catch (Exception $e) {
+            Log::error($e);
+        }
+    }
 }
