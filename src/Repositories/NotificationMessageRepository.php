@@ -3,12 +3,12 @@
 namespace Strivebenifits\Messagehub\Repositories;
 
 use App\Http\Repositories\BaseRepository;
-use App\Models\NotificationMessage;
+use Strivebenifits\Messagehub\Models\NotificationMessage;
+use Strivebenifits\Messagehub\Models\PushNotificationLog;
+use Strivebenifits\Messagehub\Models\NotificationInvoice;
+use Strivebenifits\Messagehub\Models\TwilioWebhooksDetails;
 use App\Models\User;
-use App\Models\PushNotificationLog;
-use App\Models\NotificationInvoice;
-use App\Models\TwilioWebhooksDetails;
-use App\Models\MongoDb\NotificationSchedule;
+use Strivebenifits\Messagehub\Models\MongoDb\NotificationSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use DB;
@@ -57,9 +57,9 @@ class NotificationMessageRepository extends BaseRepository
      * @param 
      * @return  Query Collection
      */
-    public function getAllNotifications($role = '', $where = '')
+    public function getAllNotifications()
     {
-        if($role == 'Employer'){
+        if(Session::get('role') == 'Employer'){
             $notifications = $this->model->where('employer_id',Auth::user()->id)
                                 ->select(['id','message','notification_type','created_at'])
                                 ->orderBy('created_at', 'desc');
@@ -67,9 +67,6 @@ class NotificationMessageRepository extends BaseRepository
             $notifications = $this->model
                                 ->select(['id','message','notification_type','created_at'])
                                 ->orderBy('created_at', 'desc');
-        }
-        if(!empty($where)){
-            $notifications = $notifications->where($where);
         }
         return $notifications;
     }
@@ -117,7 +114,7 @@ class NotificationMessageRepository extends BaseRepository
 
             foreach($employerList as $employerId){
                 if(empty($employees)){
-                    $employees = $this->usersRepository->getEmployeeByReferer('in-app', [$employerId]);
+                    $employees = $this->getEmployeeByReferer('in-app', [$employerId]);
                 }
 
                 $notificationMessageId = $this->model->insertNotificationData('in-app', $employerId, $transactionId, $message, $requestData, $thumbnailPath);
@@ -200,9 +197,9 @@ class NotificationMessageRepository extends BaseRepository
     public function getEmployeeBySentType($request, $employerId = '')
     {
         if($request->send_to == 'send_to_all'){
-            return $this->usersRepository->getEmployeeByReferer($request->notification_type, $employerId);
+            return $this->getEmployeeByReferer($request->notification_type, $employerId);
         }else{
-            return $this->usersRepository->getPhoneNumberByUser($request->employees);
+            return $this->getPhoneNumberByUser($request->employees);
         }
     }
 
@@ -390,7 +387,7 @@ class NotificationMessageRepository extends BaseRepository
     {
         try {
             if($requestData->get('send_to') == 'send_to_all'){
-                $employees = $this->usersRepository->getEmployeeByReferer($notificationType, json_decode($requestData->get('employer_id')));
+                $employees = $this->getEmployeeByReferer($notificationType, json_decode($requestData->get('employer_id')));
             }else{
                 $employees = $requestData->get('employees');
             }
@@ -614,5 +611,98 @@ class NotificationMessageRepository extends BaseRepository
                         ->first();
         }
         return $data->price_per_message*$message;
+    }
+
+    /**return a employer_id and broker id of logged in user.
+     *
+     * @param $employer_id
+     * @return Array
+     */
+    public function getRoleNotification($employer_id=null)
+    {
+        $role = Session::get('role');
+        switch($role){
+            case 'Admin':
+                $employer_id = json_decode($employer_id);
+                $broker_id   = User::find(base64_decode($employer_id[0]))->referer_id;
+            break;
+            case 'Employer':
+                $employer_id = Auth::user()->id;
+                $broker_id = Auth::user()->referer_id;
+            break;
+            case 'chloe':
+                $employer_id = Auth::user()->id;
+                $broker_id = Auth::user()->id;
+            break;
+            case 'Broker Employee':
+                $employer_id = json_decode($employer_id);
+                $broker_id = Auth::user()->referer_id;
+            break;
+            default:
+                $employer_id = json_decode($employer_id);
+                $broker_id = Auth::user()->id;
+            break;
+        }
+        return ['employerId' => $employer_id, 'brokerId' =>$broker_id];
+    }
+
+    /**return Get the list of employees based on given employer array.
+     *
+     * @param Array $employers
+     * @return Array $selectedEmployees
+     */
+    public function getEmployeeByReferer($type, $employers, $selectedEmployees=array(), $emails = array())
+    {
+        $employeeData = [];
+        if(!is_array($employers)){
+            $employers = [$employers];
+        }
+        foreach($employers as $employer){
+            $query = User::join('employeedetails','employeedetails.user_id','=','users.id')
+                        ->where('employeedetails.is_demo_account',0)
+                        ->where('users.referer_id','=',$employer)
+                        ->enabled()
+                        ->active()
+                        ->select('users.id','users.first_name','users.last_name','users.email','users.created_at','users.last_login');
+            if(!empty($selectedEmployees)){
+                $query = $query->whereIn('users.id',$selectedEmployees);
+            }
+            //filter record based on emial if provided
+            if(!empty($emails)){
+                $query = $query->whereIn('users.email',$emails);
+            }
+
+            //Get only those users who has downloaded app
+            $query->when(in_array($type,['in-app','in-app-text']), function ($q) {
+                return $q->getActiveAppUser()
+                                ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type');
+            });
+
+            //Get only those users with mobile number
+            $query->when(in_array($type,['text','in-app-text']), function ($q) use($type) {
+                $q->getUserByMobile();
+                if($type =='text'){
+                    $q->condHasMobile();
+                }
+                return $q->addSelect('employee_demographics.phone_number');
+            });
+            $employeeData = $query->get()->toArray();
+        }
+        if(in_array($type,['text','in-app-text'])){
+            foreach($employeeData as &$employee){
+                $employee['phone_number'] = !empty($employee['phone_number'])?decrypt($employee['phone_number']):'';
+            }
+        }
+        return $employeeData;
+    }
+
+    /**return a listing of phone number.
+     *
+     * @param Array $users
+     * @return Array
+     */
+    public function getPhoneNumberByUser($users)
+    {
+        return DB::table('employee_demographics')->whereIn('user_id',$users)->select('user_id as id','phone_number')->get()->toArray();
     }
 }

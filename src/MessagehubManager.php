@@ -5,8 +5,6 @@ namespace Strivebenifits\Messagehub;
 use Strivebenifits\Messagehub\Repositories\NotificationMessageRepository;
 use Exception;
 use Log;
-use Session;
-use \Illuminate\Support\Str;
 use Validator;
 use App\Http\Services\S3Service;
 use Carbon\Carbon;
@@ -37,7 +35,7 @@ class MessagehubManager
     public function getAllNotifications($requestData)
     {
         try {
-            return $this->notificationMessageRepository->getAllNotifications(Session::get('role'));
+            return $this->notificationMessageRepository->getAllNotifications();
         } catch (Exception $e) {
             Log::error($e->getMessage());
         }
@@ -264,8 +262,7 @@ class MessagehubManager
             
             $invoiceId =  $this->notificationMessageRepository->insertInvoice($invoiceToCreate);
 
-            $this->notificationMessageRepository->updateRecordByIds($messageIds, ['invoice_id' => $invoiceId]);
-            
+            $this->notificationMessageRepository->updateRecordByIds($messageIds, ['invoice_id' => $invoiceId]);            
         }
     }
 
@@ -284,5 +281,15 @@ class MessagehubManager
     public function getInvoices()
     {
         return $this->notificationMessageRepository->getInvoices()->get();
+    }
+
+    public function getRoleNotification($employer_id=null)
+    {
+        return $this->notificationMessageRepository->getRoleNotification($employer_id);
+    }
+
+    public function getEmployeeByReferer($type, $employers, $selectedEmployees=array(), $emails = array())
+    {
+        return $this->notificationMessageRepository->getEmployeeByReferer($type, $employers, $selectedEmployees, $emails);
     }
 }
