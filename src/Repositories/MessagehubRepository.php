@@ -62,7 +62,8 @@ class MessagehubRepository extends BaseRepository
             $notifications = $this->model->where('employer_id',Auth::user()->id)
                                 ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
                                 ->orderBy('created_at', 'desc');
-        if($role == 'Broker'){
+        }
+        else if($role == 'Broker'){
             $notifications = $this->model->join('users','users.id','=','notification_messages.employer_id')
                                 ->where('users.referer_id',Auth::user()->id)
                                 ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
