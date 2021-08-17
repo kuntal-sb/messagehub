@@ -264,7 +264,7 @@ class MessagehubManager
 
             $this->messagehubRepository->updateRecordByIds($messageIds, ['invoice_id' => $invoice->id]);
 
-            event(new \App\Events\InvoiceCreatedBroadcastEvent($notification->user, $invoice));
+            event(new \Strivebenifits\Messagehub\Events\InvoiceCreatedBroadcastEvent($notification->user, $invoice));
         }
     }
 

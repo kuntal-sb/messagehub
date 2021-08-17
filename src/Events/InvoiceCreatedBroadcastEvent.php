@@ -36,7 +36,7 @@ class InvoiceCreatedBroadcastEvent implements ShouldBroadcastNow
      */
     public function broadcastOn()
     {
-        return new PrivateChannel('invoice-creted-channel.'.$this->user->id);
+        return new PrivateChannel('invoice-created-channel.'.$this->user->id);
     }
 
     /**
