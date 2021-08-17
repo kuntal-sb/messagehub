@@ -8,6 +8,7 @@ use Strivebenifits\Messagehub\Models\PushNotificationLog;
 use Strivebenifits\Messagehub\Models\NotificationInvoice;
 use Strivebenifits\Messagehub\Models\TwilioWebhooksDetails;
 use App\Models\User;
+use App\Models\EmployeeDemographic;
 use Strivebenifits\Messagehub\Models\MongoDb\NotificationSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -20,7 +21,6 @@ use phpFCMSBv1\Notification;
 use phpFCMSBv1\Recipient;
 use phpFCMSBv1\Data;
 use Exception;
-use App\Http\Repositories\UsersRepository;
 use App\Jobs\sendSms;
 use Auth;
 use Session;
@@ -45,10 +45,9 @@ class NotificationMessageRepository extends BaseRepository
      * @param NotificationMessage $notificationMessage
      * @param Connection $eloquentORM
      */
-    public function __construct(NotificationMessage $notificationMessage, UsersRepository $usersRepository,Connection $eloquentORM)
+    public function __construct(NotificationMessage $notificationMessage, Connection $eloquentORM)
     {
         parent::__construct($eloquentORM);
-        $this->usersRepository = $usersRepository;
         $this->model = $notificationMessage;
     }
 
@@ -703,6 +702,6 @@ class NotificationMessageRepository extends BaseRepository
      */
     public function getPhoneNumberByUser($users)
     {
-        return DB::table('employee_demographics')->whereIn('user_id',$users)->select('user_id as id','phone_number')->get()->toArray();
+        return EmployeeDemographic::whereIn('user_id',$users)->select('user_id as id','phone_number')->get()->toArray();
     }
 }
