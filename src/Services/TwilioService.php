@@ -44,7 +44,7 @@ class TwilioService
                 'from' => config('twilio.twilio_number')
             ];
 
-            $requestPayload['statusCallback'] = url()->to('/').'/twilio/callbackMessage';//'http://bc2afca26b6e.ngrok.io/twilio/callbackMessage';
+            $requestPayload['statusCallback'] = config('twilio.twilio_callback_url');
 
             $client = $this->initRequest();
 
