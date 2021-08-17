@@ -2,11 +2,9 @@
 
 namespace Strivebenifits\Messagehub;
 
-use App\Http\Repositories\NotificationMessageRepository;
-use App\Http\Repositories\UsersRepository;
+use Strivebenifits\Messagehub\Repositories\NotificationMessageRepository;
 use Exception;
 use Log;
-use DataTables;
 use Session;
 use \Illuminate\Support\Str;
 use Validator;
@@ -19,23 +17,16 @@ class MessagehubManager
      * @var NotificationMessageRepository
      */
     private $notificationMessageRepository;
-
-    /**
-     * @var UsersRepository
-     */
-    private $usersRepository;
 	
 	/**
      * NotificationMessageManager constructor.
      * @param NotificationMessageRepository $notificationMessageRepository
      */
     public function __construct(
-        NotificationMessageRepository $notificationMessageRepository,
-        UsersRepository $usersRepository,
+        NotificationMessageRepository $notificationMessageRepository
     )
     {
         $this->notificationMessageRepository = $notificationMessageRepository;
-        $this->usersRepository = $usersRepository;
     }
 
     /**
@@ -46,54 +37,7 @@ class MessagehubManager
     public function getAllNotifications($requestData)
     {
         try {
-            $notifications = $this->notificationMessageRepository->getAllNotifications(Session::get('role'));
-
-            return Datatables::of($notifications)
-                    ->addIndexColumn()
-                    ->addColumn('action', function($row){
-                        $btn = '<a href="javascript:void(0)" data-toggle="tooltip" data-original-title="Resend" data-id="'.$row->id.'" data-notification_type="'.$row->notification_type.'" class="resend">
-                                    <i class="bx bx-refresh font-size-xlarge"></i>
-                                </a>
-                                <a href="javascript:void(0)" data-toggle="tooltip" data-original-title="View" data-id="'.$row->id.'" data-notification_type="'.$row->notification_type.'" class="notification-view ml-1">
-                                    <i class="bx bx-show-alt font-size-xlarge"></i>
-                                </a>';
-                        return $btn;
-                    })
-                    ->editColumn('created_at', function ($row) {
-                        return $row->created_at->toDayDateTimeString();
-                    })
-                    ->editColumn('message', function ($row) {
-                        return Str::words($row->message, 12,'....');
-                    })
-                    ->editColumn('notification_type', function ($row) {
-                        $badge = '';
-                        switch ($row->notification_type) {
-                            case 'in-app':
-                                $badge = '<div class="badge badge-pill badge-light-warning d-inline-flex align-items-center mr-1 mb-1">
-                                            <i class="bx bx-notification font-size-large mr-25"></i>
-                                            <span>In App</span>
-                                        </div>';
-                                break;
-                            case 'text':
-                                $badge = '<div class="badge badge-pill badge-light-info d-inline-flex align-items-center mr-1 mb-1">
-                                            <i class="bx bx-chat font-size-large mr-25"></i>
-                                            <span>Text</span>
-                                        </div>';
-                                break;
-                            case 'in-app-text':
-                                $badge = '<div class="badge badge-pill badge-light-primary d-inline-flex align-items-center mr-1 mb-1">
-                                            <i class="bx bx-devices font-size-large mr-25"></i>
-                                            <span>In App/Text</span>
-                                        </div>';
-                                break;                            
-                            default:
-                                // code...
-                                break;
-                        }
-                        return $badge;
-                    })
-                    ->rawColumns(['action', 'notification_type'])
-                    ->make(true);
+            return $this->notificationMessageRepository->getAllNotifications(Session::get('role'));
         } catch (Exception $e) {
             Log::error($e->getMessage());
         }
