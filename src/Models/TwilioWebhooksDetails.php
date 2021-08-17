@@ -24,10 +24,10 @@ class TwilioWebhooksDetails extends Model
     );
 
     public function creator() {
-        return $this->hasOne('App\User', 'id', 'created_by');
+        return $this->hasOne(\App\Models\User::class, 'id', 'created_by');
     }
 
     public function user() {
-        return $this->hasOne('App\User', 'id', 'user_id');
+        return $this->hasOne(\App\Models\User::class, 'id', 'user_id');
     }
 }
