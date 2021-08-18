@@ -724,7 +724,7 @@ class MessagehubRepository extends BaseRepository
             $brokers = [$brokers];
         }
         foreach($brokers as $brokerId){
-            $query = DB::table('users')->join('employerdetails', 'users.id', '=', 'employerdetails.user_id')
+            $query = User::->join('employerdetails', 'users.id', '=', 'employerdetails.user_id')
                 ->where('users.referer_id', $brokerId)
                 ->enabled()
                 ->active()
