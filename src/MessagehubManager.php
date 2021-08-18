@@ -300,6 +300,11 @@ class MessagehubManager
         return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers);
     }
 
+    public function getBrokerList($role)
+    {
+        return $this->messagehubRepository->getBrokerList($role);
+    }
+
     /* processScheduledNotifications (Single Record)
     * Add notification to queue for scheduled ones
     *

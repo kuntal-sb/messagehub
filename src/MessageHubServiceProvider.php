@@ -22,6 +22,9 @@ class MessageHubServiceProvider extends ServiceProvider
         $this->publishes([
 	        __DIR__.'/../config/messagehub.php' => config_path('messagehub.php'),
 	    ],'messagehub-config');
+        $this->publishes([
+            __DIR__.'/../config/role.php' => config_path('messagehub.php'),
+        ],'role-config');
     }
 
     /**

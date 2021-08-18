@@ -59,12 +59,12 @@ class MessagehubRepository extends BaseRepository
     public function getAllNotificationsByRole($role, $uid=null)
     {
         $uid = ($uid)?$uid:Auth::user()->id;
-        if($role == 'Employer'){
+        if($role == config('role.EMPLOYER')){
             $notifications = $this->model->where('employer_id',$uid)
                                 ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
                                 ->orderBy('created_at', 'desc');
         }
-        else if($role == 'Broker'){
+        else if($role == config('role.BROKER')){
             $notifications = $this->model->join('users','users.id','=','notification_messages.employer_id')
                                 ->where('users.referer_id',$uid)
                                 ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
@@ -536,7 +536,7 @@ class MessagehubRepository extends BaseRepository
     {
         $query = $this->getRemainingInvoice($startDate, $endDate)->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]);
         switch (Session::get('role')) {
-            case 'Employer':
+            case config('role.EMPLOYER'):
                 $query->where('employer_id',Auth::user()->id);
                 break;
             
@@ -587,7 +587,7 @@ class MessagehubRepository extends BaseRepository
         $role = ($role =='')?Session::get('role'):$role;
         $query = NotificationInvoice::select('id','user_id','paid_by', 'invoice_no','message_count','amount','tax','discount','start_date','end_date','status');
         switch ($role) {
-            case 'Employer':
+            case config('role.BROKER'):
                 $query->where('user_id',Auth::user()->id);
                 break;
             
@@ -628,19 +628,19 @@ class MessagehubRepository extends BaseRepository
     {
         $role = Session::get('role');
         switch($role){
-            case 'Admin':
+            case config('role.ADMIN'):
                 $employer_id = json_decode($employer_id);
                 $broker_id   = User::find(base64_decode($employer_id[0]))->referer_id;
             break;
-            case 'Employer':
+            case config('role.EMPLOYER'):
                 $employer_id = Auth::user()->id;
                 $broker_id = Auth::user()->referer_id;
             break;
-            case 'chloe':
+            case config('role.CHLOE'):
                 $employer_id = Auth::user()->id;
                 $broker_id = Auth::user()->id;
             break;
-            case 'Broker Employee':
+            case config('role.BROKEREMPLOYEE'):
                 $employer_id = json_decode($employer_id);
                 $broker_id = Auth::user()->referer_id;
             break;
@@ -726,7 +726,7 @@ class MessagehubRepository extends BaseRepository
         foreach($brokers as $brokerId){
             $query = User::join('assigned_roles','users.id','=','assigned_roles.user_id')
                         ->join('roles','roles.id','=','assigned_roles.role_id')
-                        ->where('roles.name','=', User::EMPLOYER)
+                        ->where('roles.name','=', config('role.EMPLOYER'))
                         ->where('users.referer_id','=',$brokerId)
                         ->enabled()
                         ->active()
@@ -742,5 +742,21 @@ class MessagehubRepository extends BaseRepository
         }
 
         return $employerData;
+    }
+
+    /**return Get the list of Active Brokers.
+     *
+     * @param Array $
+     * @return Array $Brokers List
+     */
+    public function getBrokerList($role)
+    {
+        $brokers = [];
+        if($role == config('role.ADMIN')){
+            $brokers = User::join('brokerdetails','users.id', '=', 'brokerdetails.user_id')
+                        ->where('users.is_active', '=', 1)
+                        ->select('users.id','users.company_name', 'users.first_name', 'users.last_name', 'users.email', 'users.phone', 'users.mobile', 'brokerdetails.broker_address')->get()->toArray();
+        }
+        return $brokers;
     }
 }
