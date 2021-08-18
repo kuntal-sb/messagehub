@@ -585,17 +585,20 @@ class MessagehubRepository extends BaseRepository
     public function getInvoices($role = '')
     {
         $role = ($role =='')?Session::get('role'):$role;
-        $query = NotificationInvoice::select('id','user_id','paid_by', 'invoice_no','message_count','amount','tax','discount','start_date','end_date','status');
+        $query = NotificationInvoice::select('notification_invoices.id','notification_invoices.user_id','notification_invoices.paid_by', 'notification_invoices.invoice_no','notification_invoices.message_count','notification_invoices.amount','notification_invoices.tax','notification_invoices.discount','notification_invoices.start_date','notification_invoices.end_date','notification_invoices.status');
         switch ($role) {
-            case config('role.BROKER'):
+            case config('role.EMPLOYER'):
                 $query->where('user_id',Auth::user()->id);
                 break;
-            
+            case config('role.BROKER'):
+                $query->join('users','users.id', '=', 'notification_invoices.user_id')
+                    ->where('users.referer_id', Auth::user()->id);
+                break;
             default:
                 // code...
                 break;
         }
-                            
+
         return $query;
     }
 
