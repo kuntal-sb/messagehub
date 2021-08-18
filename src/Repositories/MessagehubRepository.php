@@ -679,26 +679,33 @@ class MessagehubRepository extends BaseRepository
             if(!empty($selectedEmployees)){
                 $query = $query->whereIn('users.id',$selectedEmployees);
             }
-            //filter record based on emial if provided
+            //filter record based on email if provided
             if(!empty($emails)){
                 $query = $query->whereIn('users.email',$emails);
             }
 
             //Get only those users who has downloaded app
-            $query->when(in_array($type,[config('messagehub.notification.type.INAPP'),config('messagehub.notification.type.INAPPTEXT')]), function ($q) {
+            $query->when(in_array($type,[config('messagehub.notification.type.INAPP')]), function ($q) {
                 return $q->getActiveAppUser()
                                 ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type');
             });
 
             //Get only those users with mobile number
-            $query->when(in_array($type,[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]), function ($q) use($type) {
-                $q->getUserByMobile();
-                if($type ==config('messagehub.notification.type.TEXT')){
-                    $q->condHasMobile();
-                }
+            $query->when(in_array($type,[config('messagehub.notification.type.TEXT')]), function ($q) use($type) {
+                $q->getUserByMobile()->condHasMobile();
                 return $q->addSelect('employee_demographics.phone_number');
             });
-            $employeeData = array_merge($employeeData, $query->get()->toArray());
+
+            if($type == config('messagehub.notification.type.INAPPTEXT')){
+                $query1 = clone $query;
+                $query = $query->getUserByMobile()->condHasMobile()->addSelect('employee_demographics.phone_number', DB::raw('null as device_id'), DB::raw('null as device_type'))->get();
+                $query1 = $query1->getActiveAppUser()
+                                ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type', DB::raw('"" as phone_number'))->get();
+                $employeeData = array_merge($employeeData, $query1->merge($query)->toArray());
+
+            }else{
+                $employeeData = array_merge($employeeData, $query->get()->toArray());
+            }
         }
         if(in_array($type,[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])){
             foreach($employeeData as &$employee){
