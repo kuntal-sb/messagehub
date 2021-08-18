@@ -731,7 +731,7 @@ class MessagehubRepository extends BaseRepository
                 ->where('users.referer_id', $brokerId)
                 ->enabled()
                 ->active()
-                ->select('users.id','users.company_name','users.email','users.last_login');
+                ->select('users.id','users.company_name','users.email','users.first_name','users.last_name','users.last_login');
 
             if(!empty($selectedEmployers)){
                 $query = $query->whereIn('users.id',$selectedEmployers);
