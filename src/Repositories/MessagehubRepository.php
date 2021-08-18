@@ -715,7 +715,7 @@ class MessagehubRepository extends BaseRepository
     /**return Get the list of employer based on given broker array.
      *
      * @param Array $brokers
-     * @return Array $selectedEmployers
+     * @return Array Employers List
      */
     public function getEmployerList($brokers, $selectedEmployers=array(), $emails = array())
     {
@@ -724,13 +724,12 @@ class MessagehubRepository extends BaseRepository
             $brokers = [$brokers];
         }
         foreach($brokers as $brokerId){
-            $query = User::join('assigned_roles','users.id','=','assigned_roles.user_id')
-                        ->join('roles','roles.id','=','assigned_roles.role_id')
-                        ->where('roles.name','=', config('role.EMPLOYER'))
-                        ->where('users.referer_id','=',$brokerId)
-                        ->enabled()
-                        ->active()
-                        ->select('users.id','users.company_name','users.email','users.last_login');
+            $query = DB::table('users')->join('employerdetails', 'users.id', '=', 'employerdetails.user_id')
+                ->where('users.referer_id', $brokerId)
+                ->enabled()
+                ->active()
+                ->select('users.id','users.company_name','users.email','users.last_login');
+
             if(!empty($selectedEmployers)){
                 $query = $query->whereIn('users.id',$selectedEmployers);
             }
@@ -755,7 +754,7 @@ class MessagehubRepository extends BaseRepository
         if($role == config('role.ADMIN')){
             $brokers = User::join('brokerdetails','users.id', '=', 'brokerdetails.user_id')
                         ->where('users.is_active', '=', 1)
-                        ->select('users.id','users.company_name', 'users.first_name', 'users.last_name', 'users.email', 'users.phone', 'users.mobile', 'brokerdetails.broker_address')->get()->toArray();
+                        ->select('users.id','users.company_name', 'users.first_name', 'users.last_name', 'users.email', 'users.phone', 'users.mobile', 'users.last_login' 'brokerdetails.broker_address')->get()->toArray();
         }
         return $brokers;
     }
