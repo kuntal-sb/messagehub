@@ -748,7 +748,7 @@ class MessagehubRepository extends BaseRepository
 
     /**return Get the list of Active Brokers.
      *
-     * @param Array $
+     * @param $role
      * @return Array $Brokers List
      */
     public function getBrokerList($role)
@@ -760,5 +760,15 @@ class MessagehubRepository extends BaseRepository
                         ->select('users.id','users.company_name', 'users.first_name', 'users.last_name', 'users.email', 'users.phone', 'users.mobile', 'users.last_login')->get()->toArray();
         }
         return $brokers;
+    }
+
+    public function getScheduledNotifications($role)
+    {
+        return NotificationSchedule::orderBy('schedule_date','desc')->orderBy('schedule_time','desc')->get();
+    }
+
+    public function removeScheduledNotifications($id)
+    {
+        NotificationSchedule::where('_id', $id)->delete();
     }
 }

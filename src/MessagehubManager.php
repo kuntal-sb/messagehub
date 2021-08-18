@@ -330,4 +330,14 @@ class MessagehubManager
             Log::error($e);
         }
     }
+
+    public function getScheduledNotifications($role)
+    {
+        return $this->messagehubRepository->getScheduledNotifications($role);
+    }
+
+    public function removeScheduledNotifications($id)
+    {
+        $this->messagehubRepository->removeScheduledNotifications($id);
+    }
 }
