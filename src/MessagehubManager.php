@@ -54,16 +54,16 @@ class MessagehubManager
     /**
      * evalTxtNotifications.
      * @param Request $request
-     * @param int $employerId
+     * @param array $employerIds
      * @param int $brokerId
      * @return array [status code, message]
      */
-    public function evalTxtNotifications($request, $employerId, $brokerId)
+    public function evalTxtNotifications($request, $employerIds, $brokerId)
     {
         try{
             $transactionId = $this->messagehubRepository->generateTransactionId($request->notification_type);
             if($request->input('schedule_type') == 'schedule'){
-                extract($this->messagehubRepository->scheduleNotification($employerId,$brokerId,$request, config('messagehub.notification.type.TEXT'), ''));
+                extract($this->messagehubRepository->scheduleNotification($employerIds,$brokerId,$request, config('messagehub.notification.type.TEXT'), ''));
             }else{
                 extract($this->messagehubRepository->processTxtNotifications($request, $transactionId));
             }
@@ -76,14 +76,7 @@ class MessagehubManager
         return ['status_code' => $status_code, 'message' => $message];
     }
 
-    /**
-     * evalPushNotifications.
-     * @param Request $request
-     * @param int $employerId
-     * @param int $brokerId
-     * @return array [status code, message]
-     */
-    public function evalPushNotifications($request, $employerId, $brokerId)
+    public function evalPushNotifications($request, $employerIds, $brokerId)
     {
         try {
             //Validate the image
@@ -118,12 +111,9 @@ class MessagehubManager
 
             //Check if the schedule option is selected. If schedule is selected, then store the schedule
             if($request->input('schedule_type') == 'schedule'){
-                extract($this->messagehubRepository->scheduleNotification($employerId,$brokerId,$request, config('messagehub.notification.type.INAPP'), $thumbnail_path));
+                extract($this->messagehubRepository->scheduleNotification($employerIds,$brokerId,$request, config('messagehub.notification.type.INAPP'), $thumbnail_path));
             }else{
-                if(!is_array($employerId)){
-                    $employerId = array($employerId);
-                }
-                extract($this->messagehubRepository->processPushNotification($employerId,$brokerId,$request,$thumbnail_path, $transactionId));
+                extract($this->messagehubRepository->processPushNotification($employerIds,$brokerId,$request,$thumbnail_path, $transactionId));
             }
         } catch (Exception $e) {
             Log::error($e);

@@ -382,24 +382,24 @@ class MessagehubRepository extends BaseRepository
 
     /**
      * scheduleNotification
-     * @param int employerId
+     * @param array employerIds
      * @param int brokerId
      * @param Request requestData
      * @param string thumbnailPath
      * @param string notificationType
      * @return  Store Data into Mongodb for queue
      */
-    public function scheduleNotification($employerId, $brokerId, $requestData, $notificationType,  $thumbnailPath = '')
+    public function scheduleNotification($employerIds, $brokerId, $requestData, $notificationType,  $thumbnailPath = '')
     {
         try {
             if($requestData->get('send_to') == 'send_to_all'){
-                $employees = $this->getEmployeeByReferer($notificationType, json_decode($requestData->get('employer_id')));
+                $employees = $this->getEmployeeByReferer($notificationType, $employerIds);
             }else{
                 $employees = $requestData->get('employees');
             }
 
             $data = $requestData->all();
-            $data['employers'] = $employerId;
+            $data['employers'] = $employerIds;
             $data['broker_id'] = $brokerId;
             $data['created_by'] = Auth::user()->id;
             $data['employees'] = $employees;
@@ -419,6 +419,8 @@ class MessagehubRepository extends BaseRepository
 
             $sid = $data['schedule_date'].' '.$data['schedule_time'];
             $data['scheduled_utc_time'] = gmdate('Y-m-d H:i',strtotime($sid));
+
+            unset($data['brokers']);
 
             if($schedule_id = $requestData->schedule_id){
                 $notificationSchedule = NotificationSchedule::where('_id',$schedule_id)->update($data);
@@ -632,8 +634,9 @@ class MessagehubRepository extends BaseRepository
         $role = Session::get('role');
         switch($role){
             case config('role.ADMIN'):
-                $employer_id = json_decode($employer_id);
-                $broker_id   = User::find(base64_decode($employer_id[0]))->referer_id;
+            case config('role.BROKER'):
+                $employer_id = base64_decode($employer_id[0]);
+                $broker_id   = User::find($employer_id)->referer_id;
             break;
             case config('role.EMPLOYER'):
                 $employer_id = Auth::user()->id;
@@ -695,7 +698,7 @@ class MessagehubRepository extends BaseRepository
                 }
                 return $q->addSelect('employee_demographics.phone_number');
             });
-            $employeeData = $query->get()->toArray();
+            $employeeData = array_merge($employeeData, $query->get()->toArray());
         }
         if(in_array($type,[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])){
             foreach($employeeData as &$employee){
