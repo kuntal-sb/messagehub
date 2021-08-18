@@ -177,12 +177,12 @@ class MessagehubRepository extends BaseRepository
     /**
      * Prepare data to send Text notification
      * @param Array request
+     * @param Array employerIds
      * @return Schedule TEXT Message
      */
-    public function processTxtNotifications($request, $transactionId)
+    public function processTxtNotifications($request, $transactionId, $employerIds)
     {
         try {
-            $employerIds = json_decode($request->employer_id);
             foreach ($employerIds as $key => $employerId) {
                 $employees = $this->getEmployeeBySentType($request, $employerId);
 
@@ -198,7 +198,7 @@ class MessagehubRepository extends BaseRepository
             $message = $e->getMessage();
         }
         return ['status_code' => $status_code, 'message' => $message];
-    }    
+    }
 
     public function getEmployeeBySentType($request, $employerId = '')
     {

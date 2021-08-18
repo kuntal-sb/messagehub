@@ -65,7 +65,7 @@ class MessagehubManager
             if($request->input('schedule_type') == 'schedule'){
                 extract($this->messagehubRepository->scheduleNotification($employerIds,$brokerId,$request, config('messagehub.notification.type.TEXT'), ''));
             }else{
-                extract($this->messagehubRepository->processTxtNotifications($request, $transactionId));
+                extract($this->messagehubRepository->processTxtNotifications($request, $transactionId, $employerIds));
             }
             
         }catch (Exception $e){
@@ -305,11 +305,11 @@ class MessagehubManager
             $transactionId = $this->messagehubRepository->generateTransactionId($notifications->notification_type);
                     
             if($notifications->notification_type == config('messagehub.notification.type.INAPP')){
-                $this->messagehubRepository->processPushNotification(json_decode($notifications->employer_id), $notifications->broker_id, $notifications,$notifications->thumbnail, $transactionId, 'command');
+                $this->messagehubRepository->processPushNotification($notifications->employers, $notifications->broker_id, $notifications,$notifications->thumbnail, $transactionId, 'command');
             }
 
             if($notifications->notification_type == config('messagehub.notification.type.TEXT')){
-                $this->messagehubRepository->processTxtNotifications($notifications, $transactionId);
+                $this->messagehubRepository->processTxtNotifications($notifications, $transactionId, $notifications->employers);
             }
 
             //Remove record from scheduled list
