@@ -754,7 +754,7 @@ class MessagehubRepository extends BaseRepository
         if($role == config('role.ADMIN')){
             $brokers = User::join('brokerdetails','users.id', '=', 'brokerdetails.user_id')
                         ->where('users.is_active', '=', 1)
-                        ->select('users.id','users.company_name', 'users.first_name', 'users.last_name', 'users.email', 'users.phone', 'users.mobile', 'users.last_login' 'brokerdetails.broker_address')->get()->toArray();
+                        ->select('users.id','users.company_name', 'users.first_name', 'users.last_name', 'users.email', 'users.phone', 'users.mobile', 'users.last_login')->get()->toArray();
         }
         return $brokers;
     }
