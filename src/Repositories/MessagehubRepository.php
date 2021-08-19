@@ -531,10 +531,11 @@ class MessagehubRepository extends BaseRepository
     }
 
     /**
+     * 
      * @param $startDate, $endDate
      * @return array 
      */
-    public function getUsedCredit($startDate, $endDate)
+    public function getTotalSentTxt($startDate, $endDate)
     {
         $query = $this->getRemainingInvoice($startDate, $endDate)->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]);
         switch (Session::get('role')) {

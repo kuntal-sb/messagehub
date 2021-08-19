@@ -258,9 +258,15 @@ class MessagehubManager
         }
     }
 
-    public function getUsedCredit($startDate, $endDate)
+    /*
+     * Update Invoice Status
+     * @param startDate
+     * @param endDate
+     * @return int totalCount of Message
+     */
+    public function getTotalSentTxt($startDate, $endDate)
     {
-        $notifications =  $this->messagehubRepository->getUsedCredit($startDate, $endDate)->get();
+        $notifications =  $this->messagehubRepository->getTotalSentTxt($startDate, $endDate)->get();
         $message_count = 0;
         foreach ($notifications as $key => $remainingNotifications) {
             $messageIds = explode(',',$remainingNotifications->messageids);
