@@ -353,4 +353,14 @@ class MessagehubManager
     {
         $this->messagehubRepository->updateInvoiceStatus($invoiceId, $invoiceStatus, $note);
     }
+
+    /*
+     * get Chargable Amount from toal message
+     * @param int messageCount
+     * @return Amount
+     */
+    public function getAmount($messageCount)
+    {
+        return $this->messagehubRepository->getTxtAmount($messageCount);
+    }
 }
