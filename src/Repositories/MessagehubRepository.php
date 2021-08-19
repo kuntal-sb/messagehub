@@ -517,27 +517,28 @@ class MessagehubRepository extends BaseRepository
     }
 
     /**
+     * filter record by empty invoiceids
      * @param $startDate, $endDate
      * @return array 
      */
-    public function getRemainingInvoice($startDate, $endDate)
+    public function getNotGeneratedInvoice($startDate, $endDate)
     {
         return $this->model->whereNull('invoice_id')
-                                ->whereDate('created_at','>=', $startDate)
-                                ->whereDate('created_at','<=', $endDate)
-                                ->selectRaw('group_concat(id) as messageids,employer_id,created_by')
-                                ->groupBy('employer_id')
-                                ->orderBy('created_at', 'desc');
+                            ->whereDate('created_at','>=', $startDate)
+                            ->whereDate('created_at','<=', $endDate)
+                            ->selectRaw('group_concat(id) as messageids,employer_id,created_by')
+                            ->groupBy('employer_id')
+                            ->orderBy('created_at', 'desc');
     }
 
     /**
-     * 
+     * get All notification detail by TEXT
      * @param $startDate, $endDate
      * @return array 
      */
-    public function getTotalSentTxt($startDate, $endDate)
+    public function getNotificationsByText($startDate, $endDate)
     {
-        $query = $this->getRemainingInvoice($startDate, $endDate)->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]);
+        $query = $this->getNotGeneratedInvoice($startDate, $endDate)->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]);
         switch (Session::get('role')) {
             case config('role.EMPLOYER'):
                 $query->where('employer_id',Auth::user()->id);
@@ -573,10 +574,11 @@ class MessagehubRepository extends BaseRepository
     }
 
     /**
+     * Get Details of all SMS
      * @param $messageIds
      * @return collection 
      */
-    public function getSmsSent($messageIds)
+    public function getSentSmsDetails($messageIds)
     {
         return TwilioWebhooksDetails::whereIn('message_id',$messageIds)->select('id','sms_type','status');
     }

@@ -221,7 +221,7 @@ class MessagehubManager
 
     public function generateRemainingInvoice($startDate, $endDate)
     {
-        $notificationLists =  $this->messagehubRepository->getRemainingInvoice($startDate, $endDate)
+        $notificationLists =  $this->messagehubRepository->getNotGeneratedInvoice($startDate, $endDate)
                             ->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])
                             ->get();
 
@@ -230,7 +230,7 @@ class MessagehubManager
             $messageIds = explode(',',$notification->messageids);
             
             //Get Total Message Count for given messageIds
-            $message_count =  $this->messagehubRepository->getSmsSent($messageIds)->where('status','!=','failed')->get()->count();
+            $message_count =  $this->messagehubRepository->getSentSmsDetails($messageIds)->where('status','!=','failed')->get()->count();
         
 
             //Calculate Total Cost which needs to be charged to user based on used credit
@@ -259,20 +259,20 @@ class MessagehubManager
     }
 
     /*
-     * Update Invoice Status
+     * Get Text count by given time period
      * @param startDate
      * @param endDate
      * @return int totalCount of Message
      */
     public function getTotalSentTxt($startDate, $endDate)
     {
-        $notifications =  $this->messagehubRepository->getTotalSentTxt($startDate, $endDate)->get();
+        $notifications =  $this->messagehubRepository->getNotificationsByText($startDate, $endDate)->get();
         $message_all = 0;
         $message_failed = 0;
         $message_delivered = 0;
         foreach ($notifications as $key => $remainingNotifications) {
             $messageIds = explode(',',$remainingNotifications->messageids);
-            $q1 = $this->messagehubRepository->getSmsSent($messageIds);
+            $q1 = $this->messagehubRepository->getSentSmsDetails($messageIds);
             $q2 = clone $q1;
             $q3 = clone $q1;
             //Get Total Message Count for given messageIds
@@ -281,6 +281,24 @@ class MessagehubManager
             $message_delivered +=  $q3->where('status','!=','failed')->get()->count();
         }
         return ['message_all' => $message_all, 'message_failed' => $message_failed, 'message_delivered' => $message_delivered];
+    }
+
+    /*
+     * Get ALl Text message Details by given time period
+     * @param startDate
+     * @param endDate
+     * @return collection
+     */
+    public function getAllSentTextDetails($startDate, $endDate)
+    {
+        $notifications =  $this->messagehubRepository->getNotificationsByText($startDate, $endDate)->get();
+        $messages = [];
+        foreach ($notifications as $key => $remainingNotifications) {
+            $messageIds = explode(',',$remainingNotifications->messageids);
+            $q1 = $this->messagehubRepository->getSentSmsDetails($messageIds);
+            $messages = array_merge($messages, $q1->get()->toArray());
+        }
+        return $messages;
     }
 
     public function getInvoices()
