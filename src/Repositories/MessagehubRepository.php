@@ -553,6 +553,31 @@ class MessagehubRepository extends BaseRepository
     }
 
     /**
+     * getAllSentTextDetails
+     * @param $startDate, $endDate
+     * @return array 
+     */
+    public function getAllSentTextDetails($startDate, $endDate)
+    {
+        $query = $this->model->join('twilio_webhooks_details','twilio_webhooks_details.message_id','=','notification_messages.id')
+                            ->whereDate('notification_messages.created_at','>=', $startDate)
+                            ->whereDate('notification_messages.created_at','<=', $endDate)
+                            ->whereIn('notification_messages.notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])
+                            ->select('twilio_webhooks_details.id','twilio_webhooks_details.sms_type','twilio_webhooks_details.status','twilio_webhooks_details.mobile_number','twilio_webhooks_details.created_at','twilio_webhooks_details.employee_id','twilio_webhooks_details.employer_id');
+        switch (Session::get('role')) {
+            case config('role.EMPLOYER'):
+                $query->where('notification_messages.employer_id',Auth::user()->id);
+                break;
+            
+            default:
+                // code...
+                break;
+        }
+        //dd($query->first());
+        return $query;
+    }
+
+    /**
      * @param $data
      * @return id 
      */

@@ -291,14 +291,7 @@ class MessagehubManager
      */
     public function getAllSentTextDetails($startDate, $endDate)
     {
-        $notifications =  $this->messagehubRepository->getNotificationsByText($startDate, $endDate)->get();
-        $messages = [];
-        foreach ($notifications as $key => $remainingNotifications) {
-            $messageIds = explode(',',$remainingNotifications->messageids);
-            $q1 = $this->messagehubRepository->getSentSmsDetails($messageIds);
-            $messages = array_merge($messages, $q1->get()->toArray());
-        }
-        return $messages;
+        return $this->messagehubRepository->getAllSentTextDetails($startDate, $endDate);
     }
 
     public function getInvoices()
