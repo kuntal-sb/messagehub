@@ -756,8 +756,8 @@ class MessagehubRepository extends BaseRepository
         return $employerData;
     }
 
-    /**return Get the list of Active Brokers.
-     *
+    /*
+     *return Get the list of Active Brokers.
      * @param $role
      * @return Array $Brokers List
      */
@@ -772,13 +772,35 @@ class MessagehubRepository extends BaseRepository
         return $brokers;
     }
 
+    /*
+     * Get All Scheduled Notifications
+     * @param $role
+     * @return collection data
+     */
     public function getScheduledNotifications($role)
     {
         return NotificationSchedule::orderBy('schedule_date','desc')->orderBy('schedule_time','desc')->get();
     }
 
+    /*
+     * Delete Scheduled Notifications
+     * @param schedule Id
+     * @return
+     */
     public function removeScheduledNotifications($id)
     {
         NotificationSchedule::where('_id', $id)->delete();
+    }
+
+    /*
+     * Update Invoice Status
+     * @param int InvoiceId
+     * @param string Status
+     * @param string Note
+     * @return
+     */
+    public function updateInvoiceStatus($invoiceId, $invoiceStatus, $note=null)
+    {
+        NotificationInvoice::where('id', $invoiceId)->update(['status' => $invoiceStatus, 'note' => $note]);
     }
 }

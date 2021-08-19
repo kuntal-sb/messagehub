@@ -295,7 +295,8 @@ class MessagehubManager
         return $this->messagehubRepository->getBrokerList($role);
     }
 
-    /* processScheduledNotifications (Single Record)
+    /* 
+    * processScheduledNotifications (Single Record)
     * Add notification to queue for scheduled ones
     *
     */
@@ -321,13 +322,35 @@ class MessagehubManager
         }
     }
 
+    /*
+     * Get All Scheduled Notifications
+     * @param $role
+     * @return collection data
+     */
     public function getScheduledNotifications($role)
     {
         return $this->messagehubRepository->getScheduledNotifications($role);
     }
 
+    /*
+     * Delete Scheduled Notifications
+     * @param schedule Id
+     * @return
+     */
     public function removeScheduledNotifications($id)
     {
         $this->messagehubRepository->removeScheduledNotifications($id);
+    }
+
+    /*
+     * Update Invoice Status
+     * @param int InvoiceId
+     * @param string Status
+     * @param string Note
+     * @return
+     */
+    public function updateInvoiceStatus($invoiceId, $invoiceStatus, $note=null)
+    {
+        $this->messagehubRepository->updateInvoiceStatus($invoiceId, $invoiceStatus, $note);
     }
 }
