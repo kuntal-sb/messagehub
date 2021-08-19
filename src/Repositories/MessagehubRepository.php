@@ -523,12 +523,12 @@ class MessagehubRepository extends BaseRepository
      */
     public function getNotGeneratedInvoice($startDate, $endDate)
     {
-        return $this->model->whereNull('invoice_id')
-                            ->whereDate('created_at','>=', $startDate)
-                            ->whereDate('created_at','<=', $endDate)
-                            ->selectRaw('group_concat(id) as messageids,employer_id,created_by')
-                            ->groupBy('employer_id')
-                            ->orderBy('created_at', 'desc');
+        return $this->model->whereNull('notification_messages.invoice_id')
+                            ->whereDate('notification_messages.created_at','>=', $startDate)
+                            ->whereDate('notification_messages.created_at','<=', $endDate)
+                            ->selectRaw('group_concat(notification_messages.id) as messageids,notification_messages.employer_id,notification_messages.created_by')
+                            ->groupBy('notification_messages.employer_id')
+                            ->orderBy('notification_messages.created_at', 'desc');
     }
 
     /**
@@ -541,7 +541,11 @@ class MessagehubRepository extends BaseRepository
         $query = $this->getNotGeneratedInvoice($startDate, $endDate)->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]);
         switch (Session::get('role')) {
             case config('role.EMPLOYER'):
-                $query->where('employer_id',Auth::user()->id);
+                $query->where('notification_messages.employer_id',Auth::user()->id);
+                break;
+            case config('role.BROKER'):
+                $query->join('users','users.id', '=', 'notification_messages.employer_id')
+                    ->where('users.referer_id', Auth::user()->id);
                 break;
             
             default:
@@ -567,6 +571,10 @@ class MessagehubRepository extends BaseRepository
         switch (Session::get('role')) {
             case config('role.EMPLOYER'):
                 $query->where('notification_messages.employer_id',Auth::user()->id);
+                break;
+            case config('role.BROKER'):
+                $query->join('users','users.id', '=', 'notification_messages.employer_id')
+                    ->where('users.referer_id', Auth::user()->id);
                 break;
             
             default:
