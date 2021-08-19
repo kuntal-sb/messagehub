@@ -578,7 +578,7 @@ class MessagehubRepository extends BaseRepository
      */
     public function getSmsSent($messageIds)
     {
-        return TwilioWebhooksDetails::whereIn('message_id',$messageIds)->select('id','sms_type','status')->where('status','!=','failed')->get();
+        return TwilioWebhooksDetails::whereIn('message_id',$messageIds)->select('id','sms_type','status');
     }
 
     /**
