@@ -387,4 +387,13 @@ class MessagehubManager
     {
         return $this->messagehubRepository->getTxtAmount($messageCount);
     }
+
+    /**
+     * @param Int Invoiceid
+     * @return Invoice Details
+     */
+    public function getInvoiceById($id)
+    {
+        return $this->messagehubRepository->getInvoiceById($id)->first();
+    }
 }

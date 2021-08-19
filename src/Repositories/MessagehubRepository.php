@@ -839,4 +839,13 @@ class MessagehubRepository extends BaseRepository
     {
         NotificationInvoice::where('id', $invoiceId)->update(['status' => $invoiceStatus, 'note' => $note]);
     }
+
+    /**
+     * @param Int Invoiceid
+     * @return Invoice Details
+     */
+    public function getInvoiceById($id)
+    {
+        return NotificationInvoice::where('id',$id);
+    }
 }
