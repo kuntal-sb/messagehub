@@ -272,7 +272,7 @@ class MessagehubManager
 
     public function getInvoices()
     {
-        return $this->messagehubRepository->getInvoices()->orderBy('notification_invoices.created_at','desc')->get();
+        return $this->messagehubRepository->getInvoices()->orderBy('notification_invoices.created_at','desc');
     }
 
     public function getRoleNotification($employer_id=null)
