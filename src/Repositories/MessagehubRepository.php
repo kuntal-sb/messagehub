@@ -776,7 +776,8 @@ class MessagehubRepository extends BaseRepository
         return EmployeeDemographic::whereIn('user_id',$users)->select('user_id as id','phone_number')->get()->toArray();
     }
 
-    /**return Get the list of employer based on given broker array.
+    /*
+     * return Get the list of employer based on given broker array.
      *
      * @param Array $brokers
      * @return Array Employers List
@@ -801,7 +802,7 @@ class MessagehubRepository extends BaseRepository
             if(!empty($emails)){
                 $query = $query->whereIn('users.email',$emails);
             }
-            $employerData = $query->get()->toArray();
+            $employeeData = array_merge($employeeData, $query->get()->toArray());
         }
 
         return $employerData;
