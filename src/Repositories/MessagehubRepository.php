@@ -120,7 +120,7 @@ class MessagehubRepository extends BaseRepository
 
             foreach($employerList as $employerId){
                 if(empty($employees)){
-                    $employees = $this->getEmployeeByReferer(config('messagehub.notification.type.INAPP'), [$employerId]);
+                    $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId]);
                 }
 
                 $notificationMessageId = $this->model->insertNotificationData(config('messagehub.notification.type.INAPP'), $employerId, $transactionId, $message, $requestData, $thumbnailPath);
@@ -203,7 +203,7 @@ class MessagehubRepository extends BaseRepository
     public function getEmployeeBySentType($request, $employerId = '')
     {
         if($request->send_to == 'send_to_all'){
-            return $this->getEmployeeByReferer($request->notification_type, $employerId);
+            return $this->getEmployeeList($request->notification_type, $employerId);
         }else{
             return $this->getPhoneNumberByUser($request->employees);
         }
@@ -393,7 +393,7 @@ class MessagehubRepository extends BaseRepository
     {
         try {
             if($requestData->get('send_to') == 'send_to_all'){
-                $employees = $this->getEmployeeByReferer($notificationType, $employerIds);
+                $employees = $this->getEmployeeList($notificationType, $employerIds);
             }else{
                 $employees = $requestData->get('employees');
             }
@@ -714,7 +714,7 @@ class MessagehubRepository extends BaseRepository
      * @param Array $employers, for which we need to get data
      * @return Array $selectedEmployees
      */
-    public function getEmployeeByReferer($type, $employers, $selectedEmployees=array(), $emails = array())
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array())
     {
         $employeeData = [];
         if(!is_array($employers)){

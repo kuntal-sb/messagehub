@@ -308,9 +308,9 @@ class MessagehubManager
         return $this->messagehubRepository->getBrokerAndEmployerId($employer_id);
     }
 
-    public function getEmployeeByReferer($type, $employers, $selectedEmployees=array(), $emails = array())
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array())
     {
-        return $this->messagehubRepository->getEmployeeByReferer($type, $employers, $selectedEmployees, $emails);
+        return $this->messagehubRepository->getEmployeeList($type, $employers, $selectedEmployees, $emails);
     }
 
     public function getEmployerList($brokerList, $selectedEmployers)
