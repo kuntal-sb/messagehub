@@ -838,7 +838,40 @@ class MessagehubRepository extends BaseRepository
      */
     public function getScheduledNotifications($role)
     {
-        return NotificationSchedule::orderBy('schedule_date','desc')->orderBy('schedule_time','desc')->get();
+        switch ($role) {
+            case config('role.EMPLOYER'):
+                $employerIds = [auth()->user()->id];
+                break;
+            case config('role.BROKER'):
+                $employerIds = array_column($this->getEmployerList(auth()->user()->id), 'id');
+                break;
+            case config('role.HR_ADMIN'):
+            case config('role.HR'):
+                $employerIds =  [auth()->user()->referer_id];
+                break;
+            default:
+                $employerIds = [];
+                break;
+        }
+
+        $param = [];
+        if(!empty($employerIds)){
+            $param = [[
+                    '$match' => [
+                        'employers' =>[
+                            '$all' => $employerIds
+                        ]
+                    ],
+                    
+                ]];
+        }
+
+        return  NotificationSchedule::raw(function($collection) use ($param)
+        {
+            return $collection->aggregate(
+                $param
+            );
+        });
     }
 
     /*
