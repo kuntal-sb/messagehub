@@ -299,9 +299,13 @@ class MessagehubManager
         return $this->messagehubRepository->getInvoices()->orderBy('notification_invoices.created_at','desc');
     }
 
-    public function getRoleNotification($employer_id=null)
+    /*
+     * Return Broker Id and Employer Id of given employer id from admin/broker  or loggedin user
+     *
+     */
+    public function getBrokerAndEmployerId($employer_id=null)
     {
-        return $this->messagehubRepository->getRoleNotification($employer_id);
+        return $this->messagehubRepository->getBrokerAndEmployerId($employer_id);
     }
 
     public function getEmployeeByReferer($type, $employers, $selectedEmployees=array(), $emails = array())

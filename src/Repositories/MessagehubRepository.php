@@ -547,7 +547,11 @@ class MessagehubRepository extends BaseRepository
                 $query->join('users','users.id', '=', 'notification_messages.employer_id')
                     ->where('users.referer_id', Auth::user()->id);
                 break;
-            
+            //Get all by employer user belongs to 
+            case config('role.HR_ADMIN'):
+            case config('role.HR'):
+                $query->where('notification_messages.employer_id', Auth::user()->referer_id);
+                break;            
             default:
                 // code...
                 break;
@@ -576,12 +580,15 @@ class MessagehubRepository extends BaseRepository
                 $query->join('users','users.id', '=', 'notification_messages.employer_id')
                     ->where('users.referer_id', Auth::user()->id);
                 break;
-            
+            //Get all by employer user belongs to 
+            case config('role.HR_ADMIN'):
+            case config('role.HR'):
+                $query->where('notification_messages.employer_id', Auth::user()->referer_id);
+                break;
             default:
                 // code...
                 break;
         }
-        //dd($query->first());
         return $query;
     }
 
@@ -660,24 +667,31 @@ class MessagehubRepository extends BaseRepository
         return $data->price_per_message*$message;
     }
 
-    /**return a employer_id and broker id of logged in user.
-     *
+    /*
+     * return a employer_id and broker id of logged in user or passed userid.
+     * $employerId will bve passed for admin/broker user to get details of that specific user, 
+     * as admin,broker themselves won't have any specific employer id or brokerid
      * @param $employer_id
      * @return Array
      */
-    public function getRoleNotification($employer_id=null)
+    public function getBrokerAndEmployerId($employer_id=null)
     {
         $role = Session::get('role');
         switch($role){
             case config('role.ADMIN'):
             case config('role.BROKER'):
-                $employer_id = base64_decode($employer_id[0]);
+                $employer_id = base64_decode($employer_id);
                 $broker_id   = User::find($employer_id)->referer_id;
             break;
             case config('role.EMPLOYER'):
                 $employer_id = Auth::user()->id;
                 $broker_id = Auth::user()->referer_id;
             break;
+            case config('role.HR_ADMIN'):
+            case config('role.HR'):
+                $employer_id = Auth::user()->referer_id;
+                $broker_id = Auth::user()->broker_id;
+                break;
             case config('role.CHLOE'):
                 $employer_id = Auth::user()->id;
                 $broker_id = Auth::user()->id;
@@ -694,9 +708,10 @@ class MessagehubRepository extends BaseRepository
         return ['employerId' => $employer_id, 'brokerId' =>$broker_id];
     }
 
-    /**return Get the list of employees based on given employer array.
+    /**
+     * return Get the list of employees based on given employer array.
      *
-     * @param Array $employers
+     * @param Array $employers, for which we need to get data
      * @return Array $selectedEmployees
      */
     public function getEmployeeByReferer($type, $employers, $selectedEmployees=array(), $emails = array())
