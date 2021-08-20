@@ -2,7 +2,7 @@
 
 namespace Strivebenifits\Messagehub;
 
-use Strivebenifits\Messagehub\Repositories\messagehubRepository;
+use Strivebenifits\Messagehub\Repositories\MessagehubRepository;
 use Exception;
 use Log;
 use Validator;
