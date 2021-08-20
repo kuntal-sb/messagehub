@@ -809,7 +809,7 @@ class MessagehubRepository extends BaseRepository
             if(!empty($emails)){
                 $query = $query->whereIn('users.email',$emails);
             }
-            $employeeData = array_merge($employeeData, $query->get()->toArray());
+            $employerData = array_merge($employerData, $query->get()->toArray());
         }
 
         return $employerData;
