@@ -58,22 +58,25 @@ class MessagehubRepository extends BaseRepository
      */
     public function getAllNotificationsByRole($role, $uid=null)
     {
-        $uid = ($uid)?$uid:Auth::user()->id;
-        if($role == config('role.EMPLOYER')){
-            $notifications = $this->model->where('employer_id',$uid)
-                                ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
-                                ->orderBy('created_at', 'desc');
+        $userid = ($uid)?$uid:Auth::user()->id;
+        switch ($role) {
+            case config('role.EMPLOYER'):
+                $notifications = $this->model->where('employer_id',$userid);
+                break;
+            case config('role.BROKER'):
+                $employers = array_column($this->getEmployerList($userid), 'id');
+                $notifications = $this->model->whereIn('employer_id',$employers);
+                break;
+            case config('role.HR_ADMIN'):
+            case config('role.HR'):
+                $notifications = $this->model->where('employer_id',User::where('id',$userid)->select('referer_id')->first()->referer_id);
+                break;
+            default:
+                $notifications = $this->model;
+                break;
         }
-        else if($role == config('role.BROKER')){
-            $notifications = $this->model->join('users','users.id','=','notification_messages.employer_id')
-                                ->where('users.referer_id',$uid)
-                                ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
+        $notifications = $notifications->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
                                 ->orderBy('created_at', 'desc');
-        }else{
-            $notifications = $this->model
-                                ->select(['notification_messages.id','notification_messages.message','notification_messages.notification_type','notification_messages.created_at'])
-                                ->orderBy('created_at', 'desc');
-        }
         return $notifications;
     }
 
@@ -680,8 +683,8 @@ class MessagehubRepository extends BaseRepository
         switch($role){
             case config('role.ADMIN'):
             case config('role.BROKER'):
-                $employer_id = base64_decode($employer_id);
-                $broker_id   = User::find($employer_id)->referer_id;
+                $employer_id = Auth::user()->id;
+                $broker_id   = Auth::user()->id;
             break;
             case config('role.EMPLOYER'):
                 $employer_id = Auth::user()->id;
