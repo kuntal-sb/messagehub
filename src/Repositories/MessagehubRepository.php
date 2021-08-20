@@ -639,8 +639,12 @@ class MessagehubRepository extends BaseRepository
                 $query->where('user_id',Auth::user()->id);
                 break;
             case config('role.BROKER'):
-                $query->join('users','users.id', '=', 'notification_invoices.user_id')
-                    ->where('users.referer_id', Auth::user()->id);
+                $employers = array_column($this->getEmployerList(Auth::user()->id), 'id');
+                $query->whereIn('user_id',$employers);
+                break;
+            case config('role.HR_ADMIN'):
+            case config('role.HR'):
+                $query->where('user_id',User::where('id',Auth::user()->id)->select('referer_id')->first()->referer_id);
                 break;
             default:
                 // code...
