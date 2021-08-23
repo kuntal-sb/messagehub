@@ -24,6 +24,7 @@ use Exception;
 use Strivebenifits\Messagehub\Jobs\sendSms;
 use Auth;
 use Session;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Class MessagehubRepository
@@ -61,24 +62,44 @@ class MessagehubRepository extends BaseRepository
         $userid = ($uid)?$uid:Auth::user()->id;
         switch ($role) {
             case config('role.EMPLOYER'):
-                $notifications = $this->model->where('employer_id',$userid);
+                $employers = [$userid];
                 break;
             case config('role.BROKER'):
                 $employers = array_column($this->getEmployerList($userid), 'id');
-                $notifications = $this->model->whereIn('employer_id',$employers);
                 break;
             case config('role.HR_ADMIN'):
             case config('role.HR'):
-                $notifications = $this->model->where('employer_id',User::where('id',$userid)->select('referer_id')->first()->referer_id);
+                $employers = [User::where('id',$userid)->select('referer_id')->first()->referer_id];
                 break;
             default:
-                $notifications = $this->model;
+                $employers = [];
                 break;
         }
-        $notifications = $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.notification_type','notifications_message_hub.created_at'])
-                                ->orderBy('created_at', 'desc');
+        $notifications = $this->model;
+
+        $notifications = $notifications->where(function($query) use ($employers) {
+            $query->whereHas('pushNotifications', function (Builder $q) use ($employers){
+                            if(!empty($employers)){
+                                $q->whereIn('employer_id', $employers);
+                            }
+                        });
+            $query->orWhereHas('textNotifications', function (Builder $q) use ($employers){
+                        if(!empty($employers)){
+                            $q->whereIn('employer_id', $employers);
+                        }
+                    });
+        });
+
+        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.notification_type','notifications_message_hub.created_at'])->orderBy('created_at', 'desc');
         return $notifications;
     }
+
+    public function getMessageIds($employers)
+    {
+        $query1 = NotificationMessageHubPushLog::whereIn('employer_id', $employers)->pluck('message_id')->toArray();
+        $query2 = NotificationMessageHubTextLog::whereIn('employer_id', $employers)->pluck('message_id')->toArray();
+        return array_unique(array_merge($query1,$query2));
+    }    
 
     /**
      * getNotificationById.
@@ -86,7 +107,7 @@ class MessagehubRepository extends BaseRepository
      * @return Collection notificationDetails
      */
     public function getNotificationById($id){
-        return $this->model::with('pushNotifications','pushNotifications.user')->find($id);
+        return $this->model::with('pushNotifications','pushNotifications.employee')->find($id);
     }
 
     /**
@@ -401,7 +422,6 @@ class MessagehubRepository extends BaseRepository
                     $data['employers'][] = base64_decode($employer);
                 }
             }
-
             
             if($requestData->sent_type == 'choose-employer' && empty($data['employers'])){
                 extract($this->getBrokerAndEmployerId());
@@ -485,6 +505,7 @@ class MessagehubRepository extends BaseRepository
                     'created_at'   => Carbon::now(), 
                     'updated_at'   => Carbon::now()
                     );
+
         $log = NotificationMessageHubPushLog::create($insert_data);
         return $log->id;
     }
@@ -527,11 +548,12 @@ class MessagehubRepository extends BaseRepository
      */
     public function getNotGeneratedInvoice($startDate, $endDate)
     {
-        return $this->model->whereNull('notifications_message_hub.invoice_id')
+        return $this->model->join('notifications_message_hub_text_log','notifications_message_hub_text_log.message_id','=','notifications_message_hub.id')
+                            ->whereNull('notifications_message_hub.invoice_id')
                             ->whereDate('notifications_message_hub.created_at','>=', $startDate)
                             ->whereDate('notifications_message_hub.created_at','<=', $endDate)
-                            ->selectRaw('group_concat(notifications_message_hub.id) as messageids,notifications_message_hub.employer_id,notifications_message_hub.created_by')
-                            ->groupBy('notifications_message_hub.employer_id')
+                            ->selectRaw('group_concat(DISTINCT notifications_message_hub.id) as messageids,notifications_message_hub_text_log.employer_id,notifications_message_hub.created_by')
+                            ->groupBy('notifications_message_hub_text_log.employer_id')
                             ->orderBy('notifications_message_hub.created_at', 'desc');
     }
 
@@ -542,25 +564,29 @@ class MessagehubRepository extends BaseRepository
      */
     public function getNotificationsByText($startDate, $endDate)
     {
-        $query = $this->getNotGeneratedInvoice($startDate, $endDate)->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]);
         switch (Session::get('role')) {
             case config('role.EMPLOYER'):
-                $query->where('notifications_message_hub.employer_id',Auth::user()->id);
+                $employers = [Auth::user()->id];
                 break;
             case config('role.BROKER'):
-                $query->join('users','users.id', '=', 'notifications_message_hub.employer_id')
-                    ->where('users.referer_id', Auth::user()->id);
+                $employers = array_column($this->getEmployerList(Auth::user()->id), 'id');
                 break;
             //Get all by employer user belongs to 
             case config('role.HR_ADMIN'):
             case config('role.HR'):
-                $query->where('notifications_message_hub.employer_id', Auth::user()->referer_id);
+                $employers = [Auth::user()->referer_id];
                 break;            
             default:
-                // code...
+                $employers = [];
                 break;
         }
-                            
+
+        $query = $this->getNotGeneratedInvoice($startDate, $endDate);
+        if(!empty($employers)){
+            $query->whereIn('employer_id', $employers);
+        }
+        $query->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]);
+                   
         return $query;
     }
 
@@ -578,20 +604,22 @@ class MessagehubRepository extends BaseRepository
                             ->select('notifications_message_hub_text_log.id','notifications_message_hub_text_log.sms_type','notifications_message_hub_text_log.status','notifications_message_hub_text_log.mobile_number','notifications_message_hub_text_log.created_at','notifications_message_hub_text_log.employee_id','notifications_message_hub_text_log.employer_id');
         switch (Session::get('role')) {
             case config('role.EMPLOYER'):
-                $query->where('notifications_message_hub.employer_id',Auth::user()->id);
+                $employers = [Auth::user()->id];
                 break;
             case config('role.BROKER'):
-                $query->join('users','users.id', '=', 'notifications_message_hub.employer_id')
-                    ->where('users.referer_id', Auth::user()->id);
+                $employers = array_column($this->getEmployerList(Auth::user()->id), 'id');
                 break;
             //Get all by employer user belongs to 
             case config('role.HR_ADMIN'):
             case config('role.HR'):
-                $query->where('notifications_message_hub.employer_id', Auth::user()->referer_id);
+                $employers = [Auth::user()->referer_id];
                 break;
             default:
-                // code...
+                $employers = [];
                 break;
+        }
+        if(!empty($employers)){
+            $query->whereIn('notifications_message_hub_text_log.employer_id', $employers);
         }
         return $query;
     }
@@ -688,8 +716,7 @@ class MessagehubRepository extends BaseRepository
         switch($role){
             case config('role.ADMIN'):
             case config('role.BROKER'):
-                $employer_id = Auth::user()->id;
-                $broker_id   = Auth::user()->id;
+                $employer_id = $broker_id = Auth::user()->id;
             break;
             case config('role.EMPLOYER'):
                 $employer_id = Auth::user()->id;
@@ -712,6 +739,10 @@ class MessagehubRepository extends BaseRepository
                 $employer_id = (Auth::user())?Auth::user()->id:$u_id;
                 $broker_id = User::where('id',$employer_id)->select('referer_id')->first()->referer_id;
             break;
+        }
+        if(!empty($u_id)){
+            $employer_id = $u_id;
+            $broker_id = User::where('id',$u_id)->select('referer_id')->first()->referer_id;
         }
         return ['employerId' => $employer_id, 'brokerId' =>$broker_id];
     }

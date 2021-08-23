@@ -62,12 +62,7 @@ class MessagehubManager
     {
         try{
             $transactionId = $this->messagehubRepository->generateTransactionId($request->notification_type);
-            if($request->input('schedule_type') == 'schedule'){
-                extract($this->messagehubRepository->scheduleNotification($employerIds,$brokerId,$request, config('messagehub.notification.type.TEXT'), ''));
-            }else{
-                extract($this->messagehubRepository->processTxtNotifications($request, $transactionId, $employerIds));
-            }
-            
+            extract($this->messagehubRepository->processTxtNotifications($request, $transactionId, $employerIds));            
         }catch (Exception $e){
             Log::error($e);
             $status_code = 400;
@@ -87,13 +82,8 @@ class MessagehubManager
             }
 
             $transactionId = $this->messagehubRepository->generateTransactionId($request->notification_type);
-
-            //Check if the schedule option is selected. If schedule is selected, then store the schedule
-            if($request->input('schedule_type') == 'schedule'){
-                extract($this->messagehubRepository->scheduleNotification($employerIds,$brokerId,$request, config('messagehub.notification.type.INAPP'), $thumbnail_path));
-            }else{
-                extract($this->messagehubRepository->processPushNotification($employerIds,$brokerId,$request,$thumbnail_path, $transactionId));
-            }
+            extract($this->messagehubRepository->processPushNotification($employerIds,$brokerId,$request,$thumbnail_path, $transactionId));
+            
         } catch (Exception $e) {
             Log::error($e);
             $status_code = 400;
@@ -103,7 +93,7 @@ class MessagehubManager
     }
 
     /*
-     * scheduleNotificationByApp
+     * scheduleNotification
      * 
      */
     public function scheduleNotification($requestData)
