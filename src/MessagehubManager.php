@@ -313,7 +313,7 @@ class MessagehubManager
         return $this->messagehubRepository->getEmployeeList($type, $employers, $selectedEmployees, $emails);
     }
 
-    public function getEmployerList($brokerList, $selectedEmployers)
+    public function getEmployerList($brokerList, $selectedEmployers = array())
     {
         return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers);
     }
