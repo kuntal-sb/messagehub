@@ -3,7 +3,7 @@
 namespace Strivebenifits\Messagehub\Repositories;
 use App\Http\Repositories\BaseRepository;
 use Strivebenifits\Messagehub\Entities\TwilioResponseEntity;
-use Strivebenifits\Messagehub\Models\TwilioWebhooksDetails;
+use Strivebenifits\Messagehub\Models\NotificationMessageHubTextLog;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Database\Connection;
@@ -15,9 +15,9 @@ use Illuminate\Database\Connection;
 class TwilioRepository extends BaseRepository
 {
     /**
-     * @var TwilioWebhooksDetails
+     * @var NotificationMessageHubTextLog
      */
-    private $twilioWebhooksDetails;
+    private $notificationMessageHubTextLog;
 
    /**
      * @var
@@ -32,30 +32,29 @@ class TwilioRepository extends BaseRepository
 
     /**
      * TwilioRepository constructor.
-     * @param TwilioWebhooksDetails $twilioWebhooksDetails
+     * @param NotificationMessageHubTextLog $notificationMessageHubTextLog
      * @param User $user
      * @param Connection $eloquentORM
      */
     public function __construct(
-        TwilioWebhooksDetails $twilioWebhooksDetails,
+        NotificationMessageHubTextLog $notificationMessageHubTextLog,
         User $user,
         Connection $eloquentORM
     )
     {
         parent::__construct($eloquentORM);
-        $this->twilioWebhooksDetails = $twilioWebhooksDetails;
+        $this->notificationMessageHubTextLog = $notificationMessageHubTextLog;
         $this->user = $user;
     }
 
     /**
      * @param TwilioResponseEntity $entity
-     * @return TwilioWebhooksDetails|\Illuminate\Database\Eloquent\Model
+     * @return NotificationMessageHubTextLog|\Illuminate\Database\Eloquent\Model
      */
     public function createLog(TwilioResponseEntity $entity)
     {
         $fields = $entity->fieldsToArray();
-        return $this->twilioWebhooksDetails
-            ->create($fields);
+        return $this->notificationMessageHubTextLog->create($fields);
     }
 
     /**
@@ -64,7 +63,7 @@ class TwilioRepository extends BaseRepository
      */
     public function findLogBySid($sid)
     {
-        return $this->twilioWebhooksDetails
+        return $this->notificationMessageHubTextLog
             ->where('sid', $sid)
             ->first();
     }
@@ -86,7 +85,7 @@ class TwilioRepository extends BaseRepository
             }
         }
 
-        return $this->twilioWebhooksDetails
+        return $this->notificationMessageHubTextLog
             ->where('sid', $fields['SmsSid'])
             ->update(
                 $updateFields

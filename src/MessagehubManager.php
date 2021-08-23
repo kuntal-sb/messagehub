@@ -374,22 +374,21 @@ class MessagehubManager
                     $brokerIds = $this->getAppBrokers([$appId]);
                     $employerIds = array_column($this->getEmployerList($brokerIds), 'id');
 
-                    if($notifications->notification_type == config('messagehub.notification.type.INAPP')){
+                    if(in_array($notifications->notification_type, [config('messagehub.notification.type.INAPP'), config('messagehub.notification.type.INAPPTEXT')])){
                         $this->messagehubRepository->processPushNotification($employerIds, $brokerIds[0], $notifications,$notifications->thumbnail, $transactionId, 'command');
                     }
 
-                    if($notifications->notification_type == config('messagehub.notification.type.TEXT')){
+                    if(in_array($notifications->notification_type, [config('messagehub.notification.type.TEXT'), config('messagehub.notification.type.INAPPTEXT')])){
                         $this->messagehubRepository->processTxtNotifications($notifications, $transactionId, $employerIds);
                     }
                 }
             }else{
-                if($notifications->notification_type == config('messagehub.notification.type.INAPP')){
+                if(in_array($notifications->notification_type, [config('messagehub.notification.type.INAPP'), config('messagehub.notification.type.INAPPTEXT')])){
                     extract($this->messagehubRepository->getBrokerAndEmployerId($notifications->employers[0]));
-
                     $this->messagehubRepository->processPushNotification($notifications->employers, $brokerId, $notifications,$notifications->thumbnail, $transactionId, 'command');
                 }
 
-                if($notifications->notification_type == config('messagehub.notification.type.TEXT')){
+                if(in_array($notifications->notification_type, [config('messagehub.notification.type.TEXT'), config('messagehub.notification.type.INAPPTEXT')])){
                     $this->messagehubRepository->processTxtNotifications($notifications, $transactionId, $notifications->employers);
                 }
             }

@@ -3,10 +3,10 @@
 namespace Strivebenifits\Messagehub\Repositories;
 
 use App\Http\Repositories\BaseRepository;
-use Strivebenifits\Messagehub\Models\NotificationMessage;
-use Strivebenifits\Messagehub\Models\PushNotificationLog;
+use Strivebenifits\Messagehub\Models\NotificationMessageHub;
+use Strivebenifits\Messagehub\Models\NotificationMessageHubPushLog;
 use Strivebenifits\Messagehub\Models\NotificationInvoice;
-use Strivebenifits\Messagehub\Models\TwilioWebhooksDetails;
+use Strivebenifits\Messagehub\Models\NotificationMessageHubTextLog;
 use App\Models\User;
 use App\Models\EmployeeDemographic;
 use Strivebenifits\Messagehub\Models\MongoDb\NotificationSchedule;
@@ -42,10 +42,10 @@ class MessagehubRepository extends BaseRepository
 
     /**
      * MessagehubRepository constructor.
-     * @param NotificationMessage $notificationMessage
+     * @param NotificationMessageHub $notificationMessage
      * @param Connection $eloquentORM
      */
-    public function __construct(NotificationMessage $notificationMessage, Connection $eloquentORM)
+    public function __construct(NotificationMessageHub $notificationMessage, Connection $eloquentORM)
     {
         parent::__construct($eloquentORM);
         $this->model = $notificationMessage;
@@ -123,9 +123,9 @@ class MessagehubRepository extends BaseRepository
                 }
 
                 if(!empty($employees)){
-                    $notificationMessageId = $this->model->insertNotificationData(config('messagehub.notification.type.INAPP'), $employerId, $transactionId, $message, $requestData, $thumbnailPath);
+                    $notificationMessageId = $this->model->insertNotificationData(config('messagehub.notification.type.INAPP'), $transactionId, $message, $requestData, $thumbnailPath);
                     foreach($employees as $employee){
-                        $this->dispatchPushNotification($employee, $notificationMessageId, $message, $iosCertificateFile, $androidApi, $fcmKey, $title, $appStoreTarget);
+                        $this->dispatchPushNotification($employee, $employerId, $notificationMessageId, $message, $iosCertificateFile, $androidApi, $fcmKey, $title, $appStoreTarget);
                     }
                 }
             }
@@ -140,7 +140,7 @@ class MessagehubRepository extends BaseRepository
     }
 
     //Send Push notification to Queue
-    public function dispatchPushNotification($employee, $notificationMessageId, $message, $iosCertificateFile, $androidApi, $fcmKey, $title , $appStoreTarget)
+    public function dispatchPushNotification($employee, $employerId, $notificationMessageId, $message, $iosCertificateFile, $androidApi, $fcmKey, $title , $appStoreTarget)
     {
         try {
             if(is_array($employee)){
@@ -164,7 +164,7 @@ class MessagehubRepository extends BaseRepository
 
                 $deviceType = $this->getDeviceType($deviceType);
 
-                $send_data = array('employee_id' => (string) $employeeId,'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $message,'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $title,'app_store_target' => $appStoreTarget );
+                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $message,'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $title,'app_store_target' => $appStoreTarget );
 
                 $seconds=10+($this->increment*2);
                 sendNotifications::dispatch($send_data)->delay($seconds);
@@ -216,7 +216,7 @@ class MessagehubRepository extends BaseRepository
         try {
             $message = $this->model->parseMessage($requestData->message);
             $title = ($requestData->title)?$requestData->title:'';
-            $messageId = $this->model->insertNotificationData(config('messagehub.notification.type.TEXT'),$employerId, $transactionId, $message, $requestData);
+            $messageId = $this->model->insertNotificationData(config('messagehub.notification.type.TEXT'), $transactionId, $message, $requestData);
 
             $smsData = ['employees' => $employees, 'message' => $message, 'employer_id' => $employerId, 'message_id' => $messageId];
 
@@ -449,7 +449,7 @@ class MessagehubRepository extends BaseRepository
     }
 
     public function unreadNotificationMessages($user_id, $timestamp) {
-        $query = PushNotificationLog::where('push_notification_logs.read_status', 0)
+        $query = NotificationMessageHubPushLog::where('push_notification_logs.read_status', 0)
                 ->where('notification_messages.is_delete', 0)
                 ->WhereDate('notification_messages.expiry_date', '>=', Carbon::now()->format('Y-m-d'));
 
@@ -477,6 +477,7 @@ class MessagehubRepository extends BaseRepository
     public function insertNotificationLog($data, $message_id)
     {
         $insert_data = array('employee_id' => $data['employee_id'],
+                    'employer_id' => $data['employer_id'],
                     'message_id'   => $message_id,
                     'read_status'  => 0,
                     'is_success'   => 0,
@@ -484,13 +485,13 @@ class MessagehubRepository extends BaseRepository
                     'created_at'   => Carbon::now(), 
                     'updated_at'   => Carbon::now()
                     );
-        $log = PushNotificationLog::create($insert_data);
+        $log = NotificationMessageHubPushLog::create($insert_data);
         return $log->id;
     }
 
     public function updateNotificationLog($id, $data)
     {
-        PushNotificationLog::where('id',$id)->update($data);
+        NotificationMessageHubPushLog::where('id',$id)->update($data);
     }
 
     /**
@@ -623,7 +624,7 @@ class MessagehubRepository extends BaseRepository
      */
     public function getSentSmsDetails($messageIds)
     {
-        return TwilioWebhooksDetails::whereIn('message_id',$messageIds)->select('id','sms_type','status','created_at','employee_id','employer_id','mobile_number');
+        return NotificationMessageHubTextLog::whereIn('message_id',$messageIds)->select('id','sms_type','status','created_at','employee_id','employer_id','mobile_number');
     }
 
     /**

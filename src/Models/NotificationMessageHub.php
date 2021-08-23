@@ -5,14 +5,13 @@ namespace Strivebenifits\Messagehub\Models;
 use Illuminate\Database\Eloquent\Model;
 use Carbon\Carbon;
 
-class NotificationMessage extends Model
+class NotificationMessageHub extends Model
 {
-    protected $table = 'notification_messages';
+    protected $table = 'notifications_message_hub';
 
     protected $primaryKey = 'id';
 
     protected $fillable = [
-        'employer_id',
         'created_by',
         'transaction_id',
         'is_delete',
@@ -35,7 +34,7 @@ class NotificationMessage extends Model
      */
     public function pushNotifications()
     {
-        return $this->hasMany(PushNotificationLog::class,'message_id','id');
+        return $this->hasMany(NotificationMessageHubPushLog::class,'message_id','id');
     }
 
 
@@ -44,16 +43,16 @@ class NotificationMessage extends Model
      */
     public function textNotifications()
     {
-        return $this->hasMany(TwilioWebhooksDetails::class,'message_id','id');
+        return $this->hasMany(NotificationMessageHubTextLog::class,'message_id','id');
     }
 
     /**
      * Insert Record into Notification table
      * @return Return Id of inseted record
      */
-    public function insertNotificationData($type, $employerId, $transactionId, $message, $requestData, $thumbnailPath='')
+    public function insertNotificationData($type, $transactionId, $message, $requestData, $thumbnailPath='')
     {
-        $message_details = array('employer_id'  => $employerId,
+        $message_details = array(
                     'created_by'    => ($requestData->created_by)?$requestData->created_by:auth()->user()->id,
                     'transaction_id'=> $transactionId,
                     'message'       => $message,
