@@ -449,7 +449,7 @@ class MessagehubRepository extends BaseRepository
     }
 
     public function unreadNotificationMessages($user_id, $timestamp) {
-        $query = NotificationMessageHubPushLog::where('push_notification_logs.read_status', 0)
+        $query = NotificationMessageHubPushLog::where('notifications_message_hub_push_log.read_status', 0)
                 ->where('notification_messages.is_delete', 0)
                 ->WhereDate('notification_messages.expiry_date', '>=', Carbon::now()->format('Y-m-d'));
 
@@ -457,9 +457,9 @@ class MessagehubRepository extends BaseRepository
     }
 
     public function getNotifications($query, $user_id, $timestamp) {
-        $query = $query->join('notification_messages','notification_messages.id','=','push_notification_logs.message_id')
-            ->where('push_notification_logs.employee_id', $user_id)
-            ->where('push_notification_logs.updated_at','>=',$timestamp);
+        $query = $query->join('notification_messages','notification_messages.id','=','notifications_message_hub_push_log.message_id')
+            ->where('notifications_message_hub_push_log.employee_id', $user_id)
+            ->where('notifications_message_hub_push_log.updated_at','>=',$timestamp);
 
         if( date('Y', strtotime($timestamp)) < date('Y'))  // for timestamp 0
         {
@@ -500,7 +500,7 @@ class MessagehubRepository extends BaseRepository
      */
     public function getTextNotificationLogCount($message_id)
     {
-        return DB::table('twilio_webhooks_details')
+        return DB::table('notifications_message_hub_text_log')
             ->selectRaw(
                 "sum(case when STATUS = 'queued' then 1 else 0 end) as queued,sum(case when STATUS = 'sent' then 1 else 0 end) as sent,sum(case when STATUS = 'failed' then 1 else 0 end) as failed,sum(case when STATUS = 'undelivered' then 1 else 0 end) as undelivered,sum(case when STATUS = 'delivered' OR STATUS = 'success' then 1 else 0 end) as delivered"
             )
@@ -513,7 +513,7 @@ class MessagehubRepository extends BaseRepository
      */
     public function getPushNotificationLogCount($message_id)
     {
-        return DB::table('push_notification_logs')
+        return DB::table('notifications_message_hub_push_log')
             ->selectRaw(
                 "sum(case when STATUS = 'sent' then 1 else 0 end) as sent, sum(case when STATUS = 'delivered' then 1 else 0 end) as delivered,sum(case when STATUS = 'open' OR STATUS = 'read' then 1 else 0 end) as open, sum(case when STATUS = 'failed' then 1 else 0 end) as failed"
             )
@@ -571,11 +571,11 @@ class MessagehubRepository extends BaseRepository
      */
     public function getAllSentTextDetails($startDate, $endDate)
     {
-        $query = $this->model->join('twilio_webhooks_details','twilio_webhooks_details.message_id','=','notification_messages.id')
+        $query = $this->model->join('notifications_message_hub_text_log','notifications_message_hub_text_log.message_id','=','notification_messages.id')
                             ->whereDate('notification_messages.created_at','>=', $startDate)
                             ->whereDate('notification_messages.created_at','<=', $endDate)
                             ->whereIn('notification_messages.notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])
-                            ->select('twilio_webhooks_details.id','twilio_webhooks_details.sms_type','twilio_webhooks_details.status','twilio_webhooks_details.mobile_number','twilio_webhooks_details.created_at','twilio_webhooks_details.employee_id','twilio_webhooks_details.employer_id');
+                            ->select('notifications_message_hub_text_log.id','notifications_message_hub_text_log.sms_type','notifications_message_hub_text_log.status','notifications_message_hub_text_log.mobile_number','notifications_message_hub_text_log.created_at','notifications_message_hub_text_log.employee_id','notifications_message_hub_text_log.employer_id');
         switch (Session::get('role')) {
             case config('role.EMPLOYER'):
                 $query->where('notification_messages.employer_id',Auth::user()->id);
