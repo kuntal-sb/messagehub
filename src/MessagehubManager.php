@@ -412,7 +412,16 @@ class MessagehubManager
 
     /**
      * @param array ids of app
-     * @return employerdetail by app
+     * @return broker by app
+     */
+    public function getAppBrokers($ids)
+    {
+        return  $this->messagehubRepository->getAppBrokers($ids);
+    }
+
+    /**
+     * @param array ids of app
+     * @return broker and employer by app
      */
     public function getAppEmployers($ids)
     {
