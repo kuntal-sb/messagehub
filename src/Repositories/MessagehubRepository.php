@@ -394,28 +394,30 @@ class MessagehubRepository extends BaseRepository
      * @param string notificationType
      * @return  Store Data into Mongodb for queue
      */
-    public function scheduleNotification($employerIds, $brokerId, $requestData, $notificationType,  $thumbnailPath = '')
+    public function scheduleNotification($requestData, $notificationType,  $thumbnailPath = '')
     {
         try {
-            if($requestData->get('send_to') == 'send_to_all'){
-                $employees = $this->getEmployeeList($notificationType, $employerIds);
-            }else{
-                $employees = $requestData->get('employees');
+            $data = $requestData->all();
+
+            if(!empty($requestData->employers)){
+                $data['employers'] = [];
+                foreach ($requestData->employers as $key => $employer) {
+                    $data['employers'][] = base64_decode($employer);
+                }
             }
 
-            $data = $requestData->all();
-            $data['employers'] = $employerIds;
-            $data['broker_id'] = $brokerId;
+            
+            if($requestData->sent_type == 'choose-employer' && empty($data['employers'])){
+                extract($this->getBrokerAndEmployerId());
+                $data['employers'][] = $employerId;
+            }
+            //$data['employers'] = $employerIds;
+            //$data['broker_id'] = $brokerId;
+            //$data['employees'] = $employees;
             $data['created_by'] = Auth::user()->id;
-            $data['employees'] = $employees;
             $data['thumbnail'] = $thumbnailPath;
             $data['notification_type'] = $notificationType;
 
-            if($requestData->get('schedule_time') == '00:00'){
-                $data['specific_time'] = 0;
-            }else{                
-                $data['specific_time'] = 1;
-            }
             $data['schedule_time'] = $requestData->get('schedule_time');
             $data['schedule_date'] = date('Y-m-d',strtotime($requestData->get('schedule_date')));
 

@@ -11,12 +11,12 @@ use Carbon\Carbon;
 
 class MessagehubManager
 {
-	/**
+    /**
      * @var messagehubRepository
      */
     private $messagehubRepository;
-	
-	/**
+    
+    /**
      * NotificationMessageManager constructor.
      * @param messagehubRepository $messagehubRepository
      */
@@ -103,6 +103,22 @@ class MessagehubManager
     }
 
     /*
+     * scheduleNotificationByApp
+     * 
+     */
+    public function scheduleNotification($requestData)
+    {
+        $imgData = $this->storeImage($requestData);
+        if($imgData['status_code'] == 400){
+            return ['status_code' => $imgData['status_code'], 'message' => $imgData['message']];
+        }else{
+            $thumbnail_path = $imgData['thumbnail_path'];
+        }
+        extract($this->messagehubRepository->scheduleNotification($requestData, $requestData->notification_type, $thumbnail_path));
+        return ['status_code' => $status_code, 'message' => $message];
+    }
+
+    /*
      * Store ThumbnailImage
      * return thumbnail_path
      */
@@ -140,7 +156,7 @@ class MessagehubManager
                 $message = 'Please upload valid thumbnail image';
             }
         }
-        return ['status_code' => $status_code, 'message' => 'Please upload valid thumbnail image', 'thumbnail_path' => $thumbnail_path];
+        return ['status_code' => $status_code, 'message' => $message, 'thumbnail_path' => $thumbnail_path];
     }
 
     /**
