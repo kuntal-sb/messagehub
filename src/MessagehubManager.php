@@ -79,32 +79,11 @@ class MessagehubManager
     public function evalPushNotifications($request, $employerIds, $brokerId)
     {
         try {
-            //Validate the image
-            if($request->file('thumbnail')){
-                $rules  =   array(
-                        'thumbnail' => 'mimes:jpg,jpeg,png',
-                    );
-                $v = Validator::make($request->all(), $rules);
-                $input = $request->file('thumbnail');
-                $image_info = getimagesize($input);
-                $image_width = $image_info[0];
-                $image_height = $image_info[1];
-                if($image_width > 300 && $image_height > 200){
-                    return ['status_code' => 400, 'message' => 'Thumbnail should not exceed the mentioned dimensions(W: 300, H: 200)'];
-                }
-                if( $v->passes() ) {
-                    $name = $input->getClientOriginalName();
-                    $filePath = 'carriers/' . $name;
-                    $s3Service = new S3Service;
-                    $response = $s3Service->uploadFile($filePath, 's3', $input);
-                    if($response['status_code'] == 200){
-                        $thumbnail_path = $response['file_url'];
-                    }
-                }else{
-                    return ['status_code' => 400, 'message' => 'Please upload valid thumbnail image'];
-                }
+            $imgData = $this->storeImage($request);
+            if($imgData['status_code'] == 400){
+                return ['status_code' => $imgData['status_code'], 'message' => $imgData['message']];
             }else{
-                $thumbnail_path = '';
+                $thumbnail_path = $imgData['thumbnail_path'];
             }
 
             $transactionId = $this->messagehubRepository->generateTransactionId($request->notification_type);
@@ -121,6 +100,47 @@ class MessagehubManager
             $message = $e->getMessage();
         }
         return ['status_code' => $status_code, 'message' => $message];
+    }
+
+    /*
+     * Store ThumbnailImage
+     * return thumbnail_path
+     */
+    public function storeImage($request)
+    {
+        $status_code = 200;
+        $thumbnail_path = '';
+        $message = '';
+
+        //Validate the image
+        if($request->file('thumbnail')){
+            $rules  =   array(
+                    'thumbnail' => 'mimes:jpg,jpeg,png',
+                );
+            $v = Validator::make($request->all(), $rules);
+            $input = $request->file('thumbnail');
+            $image_info = getimagesize($input);
+            $image_width = $image_info[0];
+            $image_height = $image_info[1];
+            if($image_width > 300 && $image_height > 200){
+                $status_code = 400;
+                $message = 'Thumbnail should not exceed the mentioned dimensions(W: 300, H: 200)';
+            }
+            if( $v->passes() ) {
+                $name = $input->getClientOriginalName();
+                $filePath = 'carriers/' . $name;
+                $s3Service = new S3Service;
+                $response = $s3Service->uploadFile($filePath, 's3', $input);
+                if($response['status_code'] == 200){
+                    $thumbnail_path = $response['file_url'];
+                }
+            }else{
+                $thumbnail_path = '';
+                $status_code = 400;
+                $message = 'Please upload valid thumbnail image';
+            }
+        }
+        return ['status_code' => $status_code, 'message' => 'Please upload valid thumbnail image', 'thumbnail_path' => $thumbnail_path];
     }
 
     /**

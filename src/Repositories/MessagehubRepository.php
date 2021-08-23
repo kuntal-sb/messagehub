@@ -126,9 +126,11 @@ class MessagehubRepository extends BaseRepository
                     $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId]);
                 }
 
-                $notificationMessageId = $this->model->insertNotificationData(config('messagehub.notification.type.INAPP'), $employerId, $transactionId, $message, $requestData, $thumbnailPath);
-                foreach($employees as $employee){
-                    $this->dispatchPushNotification($employee, $notificationMessageId, $message, $iosCertificateFile, $androidApi, $fcmKey, $title, $appStoreTarget);
+                if(!empty($employees)){
+                    $notificationMessageId = $this->model->insertNotificationData(config('messagehub.notification.type.INAPP'), $employerId, $transactionId, $message, $requestData, $thumbnailPath);
+                    foreach($employees as $employee){
+                        $this->dispatchPushNotification($employee, $notificationMessageId, $message, $iosCertificateFile, $androidApi, $fcmKey, $title, $appStoreTarget);
+                    }
                 }
             }
             $status_code = 200;
