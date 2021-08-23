@@ -367,14 +367,31 @@ class MessagehubManager
     public function processScheduledNotifications($notifications)
     {
         try {
-            $transactionId = $this->messagehubRepository->generateTransactionId($notifications->notification_type);
-                    
-            if($notifications->notification_type == config('messagehub.notification.type.INAPP')){
-                $this->messagehubRepository->processPushNotification($notifications->employers, $notifications->broker_id, $notifications,$notifications->thumbnail, $transactionId, 'command');
-            }
+            $transactionId = $this->messagehubRepository->generateTransactionId($notifications->notification_type);  
+            
+            if($notifications->sent_type == 'choose-app' && !empty($notifications->apps)){// If schedule by admin app wise
+                foreach ($notifications->apps as $key => $appId) {
+                    $brokerIds = $this->getAppBrokers([$appId]);
+                    $employerIds = array_column($this->getEmployerList($brokerIds), 'id');
 
-            if($notifications->notification_type == config('messagehub.notification.type.TEXT')){
-                $this->messagehubRepository->processTxtNotifications($notifications, $transactionId, $notifications->employers);
+                    if($notifications->notification_type == config('messagehub.notification.type.INAPP')){
+                        $this->messagehubRepository->processPushNotification($employerIds, $brokerIds[0], $notifications,$notifications->thumbnail, $transactionId, 'command');
+                    }
+
+                    if($notifications->notification_type == config('messagehub.notification.type.TEXT')){
+                        $this->messagehubRepository->processTxtNotifications($notifications, $transactionId, $employerIds);
+                    }
+                }
+            }else{
+                if($notifications->notification_type == config('messagehub.notification.type.INAPP')){
+                    extract($this->messagehubRepository->getBrokerAndEmployerId($notifications->employers[0]));
+
+                    $this->messagehubRepository->processPushNotification($notifications->employers, $brokerId, $notifications,$notifications->thumbnail, $transactionId, 'command');
+                }
+
+                if($notifications->notification_type == config('messagehub.notification.type.TEXT')){
+                    $this->messagehubRepository->processTxtNotifications($notifications, $transactionId, $notifications->employers);
+                }
             }
 
             //Remove record from scheduled list

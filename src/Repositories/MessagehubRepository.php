@@ -100,11 +100,7 @@ class MessagehubRepository extends BaseRepository
             if($requestData->send_to == 'send_to_all'){
                 $employees = [];
             }else{
-                if($type == 'command'){
-                    $employees = array_column($requestData->employees,'id');
-                }else{
-                    $employees = $requestData->employees;
-                }
+                $employees = $requestData->employees;
             }
 
             //Get the assigned app of the broker who created this employer
@@ -685,7 +681,7 @@ class MessagehubRepository extends BaseRepository
      * @param $employer_id
      * @return Array
      */
-    public function getBrokerAndEmployerId($employer_id=null)
+    public function getBrokerAndEmployerId($u_id=null)
     {
         $role = Session::get('role');
         switch($role){
@@ -712,8 +708,8 @@ class MessagehubRepository extends BaseRepository
                 $broker_id = Auth::user()->referer_id;
             break;
             default:
-                $employer_id = json_decode($employer_id);
-                $broker_id = Auth::user()->id;
+                $employer_id = (Auth::user())?Auth::user()->id:$u_id;
+                $broker_id = User::where('id',$employer_id)->select('referer_id')->first()->referer_id;
             break;
         }
         return ['employerId' => $employer_id, 'brokerId' =>$broker_id];
