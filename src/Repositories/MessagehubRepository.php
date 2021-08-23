@@ -457,7 +457,7 @@ class MessagehubRepository extends BaseRepository
     }
 
     public function getNotifications($query, $user_id, $timestamp) {
-        $query = $query->join('notification_messages','notifications_message_hub.id','=','notifications_message_hub_push_log.message_id')
+        $query = $query->join('notifications_message_hub','notifications_message_hub.id','=','notifications_message_hub_push_log.message_id')
             ->where('notifications_message_hub_push_log.employee_id', $user_id)
             ->where('notifications_message_hub_push_log.updated_at','>=',$timestamp);
 

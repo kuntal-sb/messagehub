@@ -15,7 +15,7 @@ class NotificationMessageHubPushLog extends Model
      */
     protected $fillable = [
         'employee_id',
-        'employer_id'
+        'employer_id',
         'message_id',
         'is_success',
         'exception_message',
