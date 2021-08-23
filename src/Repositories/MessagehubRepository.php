@@ -904,4 +904,27 @@ class MessagehubRepository extends BaseRepository
     {
         return NotificationInvoice::where('id',$id);
     }
+
+    /**
+     * Get All App list
+     *
+     * @return Query object
+     */
+    public function getAppList()
+    {
+        return DB::table('app');
+    }
+
+    /*
+     * Get active Brokers belongs to a app
+     * @param array appids
+     * @return query object
+     */
+    public function getAppBrokers($app_ids)
+    {
+        return  User::join('brokerdetails','brokerdetails.user_id','=','users.id')
+                        ->where('users.is_active',1)
+                        ->whereIn('brokerdetails.assigned_app',$app_ids)
+                        ->select('users.id')->pluck('id')->toArray();
+    }
 }

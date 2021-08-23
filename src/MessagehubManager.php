@@ -400,4 +400,24 @@ class MessagehubManager
     {
         return $this->messagehubRepository->getInvoiceById($id)->first();
     }
+
+    /**
+     * Get App list
+     * @return Array App List
+     */
+    public function getAppList()
+    {
+        return $this->messagehubRepository->getAppList()->get()->toArray();
+    }
+
+    /**
+     * @param array ids of app
+     * @return employerdetail by app
+     */
+    public function getAppEmployers($ids)
+    {
+        $brokerList =  $this->messagehubRepository->getAppBrokers($ids);
+        $employerList =  $this->messagehubRepository->getEmployerList($brokerList);
+        return ['brokerList' => $brokerList, 'employerList' => $employerList];
+    }
 }
