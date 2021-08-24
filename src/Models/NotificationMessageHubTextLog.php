@@ -10,7 +10,7 @@ class NotificationMessageHubTextLog extends Model
     protected $primaryKey = 'id';
     protected $fillable = array(
         'employee_id',
-        'employer_id',14
+        'employer_id',
         'message_id',
         'date_created',
         'date_sent',
