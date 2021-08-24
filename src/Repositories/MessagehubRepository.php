@@ -60,19 +60,26 @@ class MessagehubRepository extends BaseRepository
     public function getAllNotificationsByRole($role, $uid=null)
     {
         $userid = ($uid)?$uid:Auth::user()->id;
+        $employers = [];
         switch ($role) {
             case config('role.EMPLOYER'):
                 $employers = [$userid];
                 break;
             case config('role.BROKER'):
-                $employers = array_column($this->getEmployerList($userid), 'id');
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }else{
+                    $employers = array_column($this->getEmployerList($userid), 'id');
+                }
                 break;
             case config('role.HR_ADMIN'):
             case config('role.HR'):
                 $employers = [User::where('id',$userid)->select('referer_id')->first()->referer_id];
                 break;
             default:
-                $employers = [];
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }
                 break;
         }
         $notifications = $this->model;
@@ -564,12 +571,17 @@ class MessagehubRepository extends BaseRepository
      */
     public function getNotificationsByText($startDate, $endDate)
     {
+        $employers = [];
         switch (Session::get('role')) {
             case config('role.EMPLOYER'):
                 $employers = [Auth::user()->id];
                 break;
             case config('role.BROKER'):
-                $employers = array_column($this->getEmployerList(Auth::user()->id), 'id');
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }else{
+                    $employers = array_column($this->getEmployerList(Auth::user()->id), 'id');
+                }
                 break;
             //Get all by employer user belongs to 
             case config('role.HR_ADMIN'):
@@ -577,7 +589,9 @@ class MessagehubRepository extends BaseRepository
                 $employers = [Auth::user()->referer_id];
                 break;            
             default:
-                $employers = [];
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }
                 break;
         }
 
@@ -597,6 +611,7 @@ class MessagehubRepository extends BaseRepository
      */
     public function getAllSentTextDetails($startDate, $endDate)
     {
+        $employers = [];
         $query = $this->model->join('notifications_message_hub_text_log','notifications_message_hub_text_log.message_id','=','notifications_message_hub.id')
                             ->whereDate('notifications_message_hub.created_at','>=', $startDate)
                             ->whereDate('notifications_message_hub.created_at','<=', $endDate)
@@ -607,7 +622,11 @@ class MessagehubRepository extends BaseRepository
                 $employers = [Auth::user()->id];
                 break;
             case config('role.BROKER'):
-                $employers = array_column($this->getEmployerList(Auth::user()->id), 'id');
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }else{
+                    $employers = array_column($this->getEmployerList(Auth::user()->id), 'id');
+                }
                 break;
             //Get all by employer user belongs to 
             case config('role.HR_ADMIN'):
@@ -615,7 +634,9 @@ class MessagehubRepository extends BaseRepository
                 $employers = [Auth::user()->referer_id];
                 break;
             default:
-                $employers = [];
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }
                 break;
         }
         if(!empty($employers)){
@@ -662,22 +683,32 @@ class MessagehubRepository extends BaseRepository
     public function getInvoices($role = '')
     {
         $role = ($role =='')?Session::get('role'):$role;
+        $employers = [];
         $query = NotificationInvoice::select('notification_invoices.id','notification_invoices.user_id','notification_invoices.paid_by', 'notification_invoices.invoice_no','notification_invoices.message_count','notification_invoices.amount','notification_invoices.tax','notification_invoices.discount','notification_invoices.start_date','notification_invoices.end_date','notification_invoices.status');
         switch ($role) {
             case config('role.EMPLOYER'):
-                $query->where('user_id',Auth::user()->id);
+                $employers = [Auth::user()->id];
                 break;
             case config('role.BROKER'):
-                $employers = array_column($this->getEmployerList(Auth::user()->id), 'id');
-                $query->whereIn('user_id',$employers);
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }else{
+                    $employers = array_column($this->getEmployerList(Auth::user()->id), 'id');
+                }
                 break;
             case config('role.HR_ADMIN'):
             case config('role.HR'):
-                $query->where('user_id',User::where('id',Auth::user()->id)->select('referer_id')->first()->referer_id);
+                $employers = [Auth::user()->referer_id];
                 break;
             default:
-                // code...
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }
                 break;
+        }
+
+        if(!empty($employers)){
+            $query->whereIn('user_id', $employers);
         }
 
         return $query;
@@ -870,28 +901,35 @@ class MessagehubRepository extends BaseRepository
      */
     public function getScheduledNotifications($role)
     {
+        $employers = [];
         switch ($role) {
             case config('role.EMPLOYER'):
-                $employerIds = [auth()->user()->id];
+                $employers = [auth()->user()->id];
                 break;
             case config('role.BROKER'):
-                $employerIds = array_column($this->getEmployerList(auth()->user()->id), 'id');
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }else{
+                    $employers = array_column($this->getEmployerList(Auth::user()->id), 'id');
+                }
                 break;
             case config('role.HR_ADMIN'):
             case config('role.HR'):
-                $employerIds =  [auth()->user()->referer_id];
+                $employers =  [auth()->user()->referer_id];
                 break;
             default:
-                $employerIds = [];
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }
                 break;
         }
 
         $param = [];
-        if(!empty($employerIds)){
+        if(!empty($employers)){
             $param = [[
                     '$match' => [
                         'employers' =>[
-                            '$all' => $employerIds
+                            '$all' => $employers
                         ]
                     ],
                     
