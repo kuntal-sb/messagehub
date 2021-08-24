@@ -329,9 +329,14 @@ class MessagehubManager
      * Return Broker Id and Employer Id of given employer id from admin/broker  or loggedin user
      *
      */
-    public function getBrokerAndEmployerId($employer_id=null)
+    public function getBrokerAndEmployerId($role)
     {
-        return $this->messagehubRepository->getBrokerAndEmployerId($employer_id);
+        return $this->messagehubRepository->getBrokerAndEmployerId($role);
+    }
+
+    public function getBrokerAndEmployerById($employer_id)
+    {
+        return $this->messagehubRepository->getBrokerAndEmployerById($employer_id);
     }
 
     public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array())
@@ -374,7 +379,7 @@ class MessagehubManager
                 }
             }else{
                 if(in_array($notifications->notification_type, [config('messagehub.notification.type.INAPP'), config('messagehub.notification.type.INAPPTEXT')])){
-                    extract($this->messagehubRepository->getBrokerAndEmployerId($notifications->employers[0]));
+                    extract($this->messagehubRepository->getBrokerAndEmployerById($notifications->employers[0]));
                     $this->messagehubRepository->processPushNotification($notifications->employers, $brokerId, $notifications,$notifications->thumbnail, $transactionId, 'command');
                 }
 

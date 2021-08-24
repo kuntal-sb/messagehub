@@ -424,7 +424,7 @@ class MessagehubRepository extends BaseRepository
             }
             
             if($requestData->sent_type == 'choose-employer' && empty($data['employers'])){
-                extract($this->getBrokerAndEmployerId());
+                extract($this->getBrokerAndEmployerId(Session::get('role')));
                 $data['employers'][] = $employerId;
             }
             //$data['employers'] = $employerIds;
@@ -704,15 +704,12 @@ class MessagehubRepository extends BaseRepository
     }
 
     /*
-     * return a employer_id and broker id of logged in user or passed userid.
-     * $employerId will bve passed for admin/broker user to get details of that specific user, 
-     * as admin,broker themselves won't have any specific employer id or brokerid
-     * @param $employer_id
+     * return a employer_id and broker id of logged in user
+     * @param $role
      * @return Array
      */
-    public function getBrokerAndEmployerId($u_id=null)
+    public function getBrokerAndEmployerId($role)
     {
-        $role = Session::get('role');
         switch($role){
             case config('role.ADMIN'):
             case config('role.BROKER'):
@@ -740,10 +737,13 @@ class MessagehubRepository extends BaseRepository
                 $broker_id = User::where('id',$employer_id)->select('referer_id')->first()->referer_id;
             break;
         }
-        if(!empty($u_id)){
-            $employer_id = $u_id;
-            $broker_id = User::where('id',$u_id)->select('referer_id')->first()->referer_id;
-        }
+        return ['employerId' => $employer_id, 'brokerId' =>$broker_id];
+    }
+
+    public function getBrokerAndEmployerById($u_id)
+    {
+        $employer_id = $u_id;
+        $broker_id = User::where('id',$u_id)->select('referer_id')->first()->referer_id;
         return ['employerId' => $employer_id, 'brokerId' =>$broker_id];
     }
 
