@@ -904,6 +904,15 @@ class MessagehubRepository extends BaseRepository
     }
 
     /**
+     * @param $data
+     * @return id 
+     */
+    public function getNotificationsById($invoiceId)
+    {
+        return NotificationMessageHub::where('invoice_id', $invoiceId);
+    }
+
+    /**
      * Get All App list
      *
      * @return Query object

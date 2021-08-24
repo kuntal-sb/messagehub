@@ -310,6 +310,30 @@ class MessagehubManager
     }
 
     /*
+     * Get Text count by given invoice
+     * @param invoiceId
+     * @return int totalCount of Message
+     */
+    public function getTotalSentTxtByInvoice($invoiceId)
+    {
+        $messageids =  $this->messagehubRepository->getNotificationsById($invoiceId)->pluck('id')->toArray();
+        
+        $message_all = 0;
+        $message_failed = 0;
+        $message_delivered = 0;
+        
+        $q1 = $this->messagehubRepository->getSentSmsDetails($messageids);
+        $q2 = clone $q1;
+        $q3 = clone $q1;
+        //Get Total Message Count for given messageIds
+        $message_all +=  $q1->get()->count();
+        $message_failed +=  $q2->where('status','failed')->get()->count();
+        $message_delivered +=  $q3->where('status','!=','failed')->get()->count();
+        
+        return ['message_all' => $message_all, 'message_failed' => $message_failed, 'message_delivered' => $message_delivered];
+    }
+
+    /*
      * Get ALl Text message Details by given time period
      * @param startDate
      * @param endDate
