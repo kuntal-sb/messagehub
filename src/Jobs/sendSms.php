@@ -25,6 +25,7 @@ class sendSms implements ShouldQueue
 
     public function __construct($data)
     {
+        $this->onQueue('txt_notification_queue');
         $this->data = $data;
     }
 

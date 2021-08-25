@@ -27,6 +27,7 @@ class sendNotifications implements ShouldQueue
 
     public function __construct($data)
     {
+        $this->onQueue('push_notification_queue');
         $this->data = $data;
     }
 
