@@ -391,7 +391,14 @@ class MessagehubManager
             if($notifications->sent_type == 'choose-app' && !empty($notifications->apps)){// If schedule by admin app wise
                 foreach ($notifications->apps as $key => $appId) {
                     $brokerIds = $this->getAppBrokers([$appId]);
+                    if(empty($brokerIds)){
+                        continue;
+                    }
                     $employerIds = array_column($this->getEmployerList($brokerIds), 'id');
+
+                    if(empty($employerIds)){
+                        continue;
+                    }
 
                     if(in_array($notifications->notification_type, [config('messagehub.notification.type.INAPP'), config('messagehub.notification.type.INAPPTEXT')])){
                         $this->messagehubRepository->processPushNotification($employerIds, $brokerIds[0], $notifications,$notifications->thumbnail, $transactionId, 'command');
@@ -499,5 +506,47 @@ class MessagehubManager
         $brokerList =  $this->messagehubRepository->getAppBrokers($ids);
         $employerList =  $this->messagehubRepository->getEmployerList($brokerList);
         return ['brokerList' => $brokerList, 'employerList' => $employerList];
+    }
+
+    /**
+     * @param int userId
+     * @param timestamp
+     * @return list
+     */
+    public function getMessagesByUser($userId,$timestamp)
+    {
+
+        $unreadCount = $this->messagehubRepository->unreadNotificationMessages($userId, $timestamp);
+        $pushMessage =  $this->messagehubRepository->getMessagesByUser($userId,$timestamp)->get()->toArray();
+        return [
+            'status_code'   => count($pushMessage) > 0 ? 200 : 400,
+            "unread_count"  => $unreadCount,
+            'notifications' => $pushMessage,
+            'message'       => count($pushMessage) == 0 ? "No more new messages" : ""
+        ];
+    }
+
+    /**
+     * @param Update push notification status
+     * @param int employee_id
+     * @param object requestData
+     * @return list
+     */
+    public function updateNotificationLog($employee_id, $requestData)
+    {
+        $notification_id = $requestData->notification_id;
+
+        if(isset($requestData->read_status)){
+            $update_data['read_status'] = $requestData->read_status;
+        }
+        if(isset($requestData->status)){
+            $update_data['status'] = $requestData->status;
+        }
+
+        $update_data['updated_at'] = Carbon::now();
+
+        $where= ['employee_id'=>$employee_id, 'message_id'=> $notification_id];
+
+        $this->messagehubRepository->updateNotificationLogByParam($where, $update_data);
     }
 }

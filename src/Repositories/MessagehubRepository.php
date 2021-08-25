@@ -534,6 +534,11 @@ class MessagehubRepository extends BaseRepository
         NotificationMessageHubPushLog::where('id',$id)->update($data);
     }
 
+    public function updateNotificationLogByParam($where, $data)
+    {
+        NotificationMessageHubPushLog::where($where)->update($data);
+    }
+
     /**
      * @param $messageId
      * @return array 
@@ -933,5 +938,31 @@ class MessagehubRepository extends BaseRepository
                         ->where('users.is_active',1)
                         ->whereIn('brokerdetails.assigned_app',$app_ids)
                         ->select('users.id')->pluck('id')->toArray();
+    }
+
+    /*
+     * Get getMessagesByUser
+     * @param int user_id
+     * @param timestamp
+     * @return query object
+     */
+    public function getMessagesByUser($user_id, $timestamp)
+    {
+        $query = NotificationMessageHubPushLog::select(
+                    'notifications_message_hub_push_log.id',
+                    'notifications_message_hub_push_log.read_status as is_read',
+                    'notifications_message_hub.notification_type',
+                    'notifications_message_hub.is_delete',
+                    'notifications_message_hub.title',
+                    'notifications_message_hub.summary',
+                    'notifications_message_hub.message',
+                    'notifications_message_hub.action_url as url',
+                    'notifications_message_hub.thumbnail',
+                    'notifications_message_hub.created_at as published_on',
+                    'notifications_message_hub.valid_from',
+                    'notifications_message_hub.expiry_date'
+                )->latest('notifications_message_hub.updated_at');
+
+        return $this->getNotifications($query, $user_id, $timestamp);
     }
 }
