@@ -193,13 +193,9 @@ class MessagehubManager
                     $iosPayload = array('badge' => $unreadCount,'custom' => array('customData' => array('notification_id' => $logID)));
                     $app_store_target = $data['app_store_target'];
                     extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$logID,$pushMessage,$data['ios_certificate_file']));
-                    if($status == 200){
-                        $is_success = 1;
-                        $exception_message = '';
-                    }else{
-                        $is_success = 0;
-                        $exception_message = $message;
-                    }
+
+                    $is_success = $status==200?1:0;
+                    $exception_message = $message;
                 }
                 catch(Exception $e){
                     //If exception occurred, then hit FCM for the old live apps.
@@ -224,7 +220,6 @@ class MessagehubManager
 
             $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
             if($is_success == 0){
-                Log::info($exception_message);
                 throw new Exception($exception_message);
             }
         }catch(Exception $e){
