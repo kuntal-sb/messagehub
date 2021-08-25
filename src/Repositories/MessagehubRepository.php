@@ -39,7 +39,10 @@ class MessagehubRepository extends BaseRepository
     private $usersRepository;
 
     private $increment = 0;
+
     private $duplicateDevices = [];
+
+    public $sms_enabled = false;
 
     /**
      * MessagehubRepository constructor.
@@ -50,6 +53,10 @@ class MessagehubRepository extends BaseRepository
     {
         parent::__construct($eloquentORM);
         $this->model = $notificationMessage;
+    }
+
+    public function setSmsEnabled($value){
+        $this->sms_enabled = $value;
     }
 
     /**
@@ -825,13 +832,16 @@ class MessagehubRepository extends BaseRepository
                 ->enabled()
                 ->active()
                 ->select('users.id','users.company_name','users.email','users.first_name','users.last_name','users.last_login');
+            if($this->sms_enabled == true){
+                $query->textEnabled();
+            }
 
             if(!empty($selectedEmployers)){
-                $query = $query->whereIn('users.id',$selectedEmployers);
+                $query->whereIn('users.id',$selectedEmployers);
             }
             //filter record based on email if provided
             if(!empty($emails)){
-                $query = $query->whereIn('users.email',$emails);
+                $query->whereIn('users.email',$emails);
             }
             $employerData = array_merge($employerData, $query->get()->toArray());
         }

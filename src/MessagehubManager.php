@@ -362,8 +362,9 @@ class MessagehubManager
         return $this->messagehubRepository->getEmployeeList($type, $employers, $selectedEmployees, $emails);
     }
 
-    public function getEmployerList($brokerList, $selectedEmployers = array())
+    public function getEmployerList($brokerList, $selectedEmployers = array(), $sms_enabled = false)
     {
+        $this->messagehubRepository->setSmsEnabled($sms_enabled);
         return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers);
     }
 
@@ -388,7 +389,7 @@ class MessagehubManager
                     if(empty($brokerIds)){
                         continue;
                     }
-                    $employerIds = array_column($this->getEmployerList($brokerIds), 'id');
+                    $employerIds = array_column($this->getEmployerList($brokerIds,[], true), 'id');
 
                     if(empty($employerIds)){
                         continue;
