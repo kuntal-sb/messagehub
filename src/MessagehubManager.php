@@ -180,8 +180,6 @@ class MessagehubManager
 
             //Get badge count // Add one for the new message
             $unreadCount = $this->messagehubRepository->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + 1;
-
-            Log::info('unreadCount : '.$unreadCount);
             
             $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
 
