@@ -267,8 +267,12 @@ class MessagehubRepository extends BaseRepository
         }
     }
 
-    //APNS Push notification
-    public function sendApns($url,$app_store_target,$badgeCount,$insertedLog,$pushMessage,$cert)
+    /**
+     * APNS Push Notification service
+     * @param 
+     * @return array with status
+     */
+    public function sendApns($url, $app_store_target, $badgeCount, $notificationId, $pushMessage, $cert)
     {
         try{          
             $headers = array(
@@ -277,7 +281,7 @@ class MessagehubRepository extends BaseRepository
             );
             $http2ch = curl_init();
             curl_setopt($http2ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$insertedLog.'}}';
+            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.'}}';
             if (!defined('CURL_HTTP_VERSION_2_0')) {
                 define('CURL_HTTP_VERSION_2_0', 3);
             }
@@ -295,25 +299,29 @@ class MessagehubRepository extends BaseRepository
                 CURLOPT_HEADER => 1
             ));
 
-            
             $result = curl_exec($http2ch);
             if ($result === FALSE) {
                 return [0, 'message' => "Curl failed: " .  curl_error($http2ch)];
             }
 
-            // get response
             $status = curl_getinfo($http2ch, CURLINFO_HTTP_CODE);
-
-            return ['status' => $status, 'message' => ""];
-
+            $message = "";
         }catch(Exception $e){
             Log::error($e);
-            return ['status' => 0, 'message' => $e->getMessage()];
+            $status = 0;
+            $message = $e->getMessage();
         }
+        return ['status' => $status, 'message' => $message];
     }
 
-    //FCM Push Notification service
-    public function fcmPush($data,$badgeCount,$insertedLog)
+    /**
+     * FCM Push Notification service
+     * @param Array data
+     * @param int unreadCount
+     * @param int notificationId
+     * @return array with status
+     */
+    public function fcmPush($data, $unreadCount, $notificationId)
     {
         try {
             $client = new Client($data['fcm_key']);
@@ -327,23 +335,22 @@ class MessagehubRepository extends BaseRepository
             $notification -> setNotification($data['title'], $data['message']);
             // Build FCM request payload
             if($data['device_type'] !== 'appNameIOS'){
-                //$fcmData = new Data();
-                //$fcmData->setData((String)$insertedLog,(String)$badgeCount);
-                $client -> build($recipient, $notification);
+                $fcmData = new Data();
+                $fcmData->setPayload(array('data' => ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId]));
+                $client -> build($recipient, $notification, $fcmData);
             }else{
                 $client -> build($recipient, $notification);
             }
             $result = $client -> fire();
-            $response = ['is_success' => $result ===true?1:0,
-                        'exception_message' => $result
-                    ];            
+            $is_success = $result ===true?1:0;
+            $message = $result;
         } catch (Exception $e) {
             Log::error($e);
-            $response = ['is_success' => 0,
-                        'exception_message' => $e->getMessage()
-                    ];
+            $is_success = 0;
+            $message = $e->getMessage();
         }
-        return $response;
+
+        return ['is_success' => $is_success, 'exception_message' => $message];
     }
 
     /**

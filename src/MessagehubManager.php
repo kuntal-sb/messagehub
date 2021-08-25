@@ -178,9 +178,10 @@ class MessagehubManager
             Log::info('Message Data : '.json_encode($data));
             $fcm_key = $data['fcm_key'];
 
-            //Get badge count
-            $unreadCount = $this->messagehubRepository->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0));
-            $badgeCount = $unreadCount + 1; // Add one for the new message
+            //Get badge count // Add one for the new message
+            $unreadCount = $this->messagehubRepository->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + 1;
+
+            Log::info('unreadCount : '.$unreadCount);
             
             $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
 
@@ -189,9 +190,9 @@ class MessagehubManager
                 try{
                     $url = env('APNS_URL').$data['device_token'];
 
-                    $iosPayload = array('badge' => $badgeCount,'custom' => array('customData' => array('notification_id' => $logID)));
+                    $iosPayload = array('badge' => $unreadCount,'custom' => array('customData' => array('notification_id' => $logID)));
                     $app_store_target = $data['app_store_target'];
-                    extract($this->messagehubRepository->sendApns($url,$app_store_target,$badgeCount,$logID,$pushMessage,$data['ios_certificate_file']));
+                    extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$logID,$pushMessage,$data['ios_certificate_file']));
                     if($status == 200){
                         $is_success = 1;
                         $exception_message = '';
@@ -202,13 +203,13 @@ class MessagehubManager
                 }
                 catch(Exception $e){
                     //If exception occurred, then hit FCM for the old live apps.
-                    $fcmPush = $this->messagehubRepository->fcmPush($data,$badgeCount,$logID);
+                    $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
                     Log::info(json_encode($fcmPush));
                     $is_success = $fcmPush['is_success'];
                     $exception_message = $fcmPush['exception_message'];
                 }
             }else{//For android hit fcm push notification
-                $fcmPush = $this->messagehubRepository->fcmPush($data,$badgeCount,$logID);
+                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
                 Log::info(json_encode($fcmPush));
                 $is_success = $fcmPush['is_success'];
                 $exception_message = $fcmPush['exception_message'];
