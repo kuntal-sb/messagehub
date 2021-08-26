@@ -514,7 +514,7 @@ class MessagehubRepository extends BaseRepository
 
         if( $timestamp != 0)
         {
-            $query = $query->where('notifications_message_hub_push_log.updated_at','>=',$timestamp)
+            $query = $query->where('notifications_message_hub_push_log.updated_at','>=',$timestamp);
         }
             
         $query = $query->whereDate('notifications_message_hub.valid_from', '<=', Carbon::now()->format('Y-m-d'))
