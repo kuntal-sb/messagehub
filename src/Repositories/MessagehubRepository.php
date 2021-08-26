@@ -520,8 +520,7 @@ class MessagehubRepository extends BaseRepository
             
         $query = $query->whereDate('notifications_message_hub.valid_from', '<=', Carbon::now()->format('Y-m-d'))
             ->where(function($q) {
-                $q->whereDate('notifications_message_hub.expiry_date', '0000-00-00')
-                ->orWhereDate('notifications_message_hub.expiry_date', '>=', Carbon::now()->format('Y-m-d'));
+                $q->WhereDate('notifications_message_hub.expiry_date', '>=', Carbon::now()->format('Y-m-d'));
             });
         return $query;
     }
