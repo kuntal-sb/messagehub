@@ -308,7 +308,7 @@ class MessagehubRepository extends BaseRepository
 
             $result = curl_exec($http2ch);
             if ($result === FALSE) {
-                return [0, 'message' => "Curl failed: " .  curl_error($http2ch)];
+                return ['status' => $status, 'message' => "Curl failed: " .  curl_error($http2ch)];
             }
 
             $status = curl_getinfo($http2ch, CURLINFO_HTTP_CODE);
