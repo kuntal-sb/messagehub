@@ -589,6 +589,7 @@ class MessagehubRepository extends BaseRepository
                             ->whereNull('notifications_message_hub.invoice_id')
                             ->whereDate('notifications_message_hub.created_at','>=', $startDate)
                             ->whereDate('notifications_message_hub.created_at','<=', $endDate)
+                            ->whereRaw(' `notifications_message_hub`.`created_as` = `notifications_message_hub_text_log`.`employer_id`')
                             ->selectRaw('group_concat(DISTINCT notifications_message_hub.id) as messageids,notifications_message_hub_text_log.employer_id,notifications_message_hub.created_by')
                             ->groupBy('notifications_message_hub_text_log.employer_id')
                             ->orderBy('notifications_message_hub.created_at', 'desc');
