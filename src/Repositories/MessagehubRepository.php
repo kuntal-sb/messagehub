@@ -624,6 +624,7 @@ class MessagehubRepository extends BaseRepository
                             ->whereDate('notifications_message_hub.created_at','>=', $startDate)
                             ->whereDate('notifications_message_hub.created_at','<=', $endDate)
                             ->whereIn('notifications_message_hub.notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])
+                            ->whereRaw(' `notifications_message_hub`.`created_as` = `notifications_message_hub_text_log`.`employer_id`')
                             ->select('notifications_message_hub_text_log.id','notifications_message_hub_text_log.sms_type','notifications_message_hub_text_log.status','notifications_message_hub_text_log.mobile_number','notifications_message_hub_text_log.created_at','notifications_message_hub_text_log.employee_id','notifications_message_hub_text_log.employer_id');
 
         $employers = $this->getEmployersFilter(Session::get('role'), Auth::user()->id);
