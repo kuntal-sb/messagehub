@@ -502,7 +502,7 @@ class MessagehubRepository extends BaseRepository
 
     public function unreadNotificationMessages($user_id, $timestamp) {
         $query = NotificationMessageHubPushLog::where('notifications_message_hub_push_log.read_status', 0)
-                ->where('notifications_message_hub.is_delete', 0)
+                //->where('notifications_message_hub.is_delete', 0)
                 ->WhereDate('notifications_message_hub.expiry_date', '>=', Carbon::now()->format('Y-m-d'));
 
         return $this->getNotifications($query, $user_id, $timestamp)->count();
@@ -515,7 +515,7 @@ class MessagehubRepository extends BaseRepository
 
         if( date('Y', strtotime($timestamp)) < date('Y'))  // for timestamp 0
         {
-            $query = $query->where('notifications_message_hub.is_delete', 0);
+            //$query = $query->where('notifications_message_hub.is_delete', 0);
         }
             
         $query = $query->whereDate('notifications_message_hub.valid_from', '<=', Carbon::now()->format('Y-m-d'))
@@ -970,7 +970,7 @@ class MessagehubRepository extends BaseRepository
                     'notifications_message_hub_push_log.id',
                     'notifications_message_hub_push_log.read_status as is_read',
                     'notifications_message_hub.notification_type',
-                    'notifications_message_hub.is_delete',
+                    'notifications_message_hub.deleted_at as is_delete',
                     'notifications_message_hub.title',
                     'notifications_message_hub.summary',
                     'notifications_message_hub.message',
