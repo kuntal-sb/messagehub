@@ -510,12 +510,11 @@ class MessagehubRepository extends BaseRepository
 
     public function getNotifications($query, $user_id, $timestamp) {
         $query = $query->join('notifications_message_hub','notifications_message_hub.id','=','notifications_message_hub_push_log.message_id')
-            ->where('notifications_message_hub_push_log.employee_id', $user_id)
-            ->where('notifications_message_hub_push_log.updated_at','>=',$timestamp);
+            ->where('notifications_message_hub_push_log.employee_id', $user_id);
 
-        if( date('Y', strtotime($timestamp)) < date('Y'))  // for timestamp 0
+        if( $timestamp != 0)
         {
-            //$query = $query->where('notifications_message_hub.is_delete', 0);
+            $query = $query->where('notifications_message_hub_push_log.updated_at','>=',$timestamp)
         }
             
         $query = $query->whereDate('notifications_message_hub.valid_from', '<=', Carbon::now()->format('Y-m-d'))
