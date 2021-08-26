@@ -3,29 +3,34 @@
 namespace Strivebenifits\Messagehub\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 use Carbon\Carbon;
 
 class NotificationMessageHub extends Model
 {
+    use SoftDeletes;
+
     protected $table = 'notifications_message_hub';
 
     protected $primaryKey = 'id';
 
     protected $fillable = [
         'created_by',
+        'created_as',
         'transaction_id',
-        'is_delete',
         'resend_count',
+        'title',
+        'summary',
         'message',
         'action_url',
         'thumbnail',
         'valid_from',
         'expiry_date',
+        'notification_type',
         'created_at',
         'updated_at',
-        'notification_type',
-        'title',
-        'summary'
+        'deleted_at'
     ];
 
 
@@ -54,6 +59,7 @@ class NotificationMessageHub extends Model
     {
         $message_details = array(
                     'created_by'    => ($requestData->created_by)?$requestData->created_by:auth()->user()->id,
+                    'created_as'    => ($requestData->created_as)?$requestData->created_as:getEmployerId(),
                     'transaction_id'=> $transactionId,
                     'message'       => $message,
                     'title'         => ($requestData->title)?$requestData->title:'',

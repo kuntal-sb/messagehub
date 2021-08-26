@@ -460,10 +460,9 @@ class MessagehubRepository extends BaseRepository
                 extract($this->getBrokerAndEmployerId(Session::get('role')));
                 $data['employers'][] = $employerId;
             }
-            //$data['employers'] = $employerIds;
-            //$data['broker_id'] = $brokerId;
-            //$data['employees'] = $employees;
+
             $data['created_by'] = Auth::user()->id;
+            $data['created_as'] = getEmployerId();
             $data['thumbnail'] = $thumbnailPath;
             $data['notification_type'] = $notificationType;
 

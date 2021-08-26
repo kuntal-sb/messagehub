@@ -239,11 +239,19 @@ class MessagehubManager
         }
     }
 
+    /*
+     * Generate Invoice  
+     * @param date StartDate
+     * @param date EndDate
+     * @return 
+     */
     public function generateRemainingInvoice($startDate, $endDate)
     {
         $notificationLists =  $this->messagehubRepository->getNotGeneratedInvoice($startDate, $endDate)
-                            ->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])
-                            ->get();
+                            ->whereIn('notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')]);
+
+        //Filter only those notifications which are generated as employer
+        $notificationLists = $notificationLists->whereRaw(' `notifications_message_hub`.`created_as` = `notifications_message_hub_text_log`.`employer_id`')->get();
 
         $lastId = $this->messagehubRepository->getLastId();
         foreach ($notificationLists as $key => $notification) {
