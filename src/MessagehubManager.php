@@ -184,8 +184,9 @@ class MessagehubManager
             $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
 
             //If the device is ios, first hit APNS.
-            if($data['device_type'] == 'appNameIOS'){
+            if($data['device_type'] === 'appNameIOS'){
                 try{
+                    Log::info('--inside apn--');
                     $url = env('APNS_URL').$data['device_token'];
 
                     $iosPayload = array('badge' => $unreadCount,'custom' => array('customData' => array('notification_id' => $logID)));
@@ -196,9 +197,10 @@ class MessagehubManager
                     $exception_message = $message;
                 }
                 catch(Exception $e){
+                    Log::error(' apn error'.$e->getMessage());
                     //If exception occurred, then hit FCM for the old live apps.
                     $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
-                    Log::info(json_encode($fcmPush));
+                    Log::info('--ios fcm push--'.json_encode($fcmPush));
                     $is_success = $fcmPush['is_success'];
                     $exception_message = $fcmPush['exception_message'];
                 }
