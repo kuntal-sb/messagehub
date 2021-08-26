@@ -179,7 +179,7 @@ class MessagehubManager
             $fcm_key = $data['fcm_key'];
 
             //Get badge count // Add one for the new message
-            $unreadCount = $this->messagehubRepository->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + 1;
+            $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + 1;
             
             $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
 
@@ -512,6 +512,19 @@ class MessagehubManager
     }
 
     /**
+     * unreadNotificationMessages
+     * @param int userId
+     * @param timestamp
+     * @return list
+     */
+    public function unreadNotificationMessages($userId,$timestamp)
+    {
+
+        return $this->messagehubRepository->unreadNotificationMessages($userId, $timestamp);
+    }
+
+
+    /**
      * @param int userId
      * @param timestamp
      * @return list
@@ -519,7 +532,7 @@ class MessagehubManager
     public function getMessagesByUser($userId,$timestamp)
     {
 
-        $unreadCount = $this->messagehubRepository->unreadNotificationMessages($userId, $timestamp);
+        $unreadCount = $this->unreadNotificationMessages($userId, $timestamp);
         $pushMessage =  $this->messagehubRepository->getMessagesByUser($userId,$timestamp)->get()->toArray();
         return [
             'status_code'   => count($pushMessage) > 0 ? 200 : 400,
