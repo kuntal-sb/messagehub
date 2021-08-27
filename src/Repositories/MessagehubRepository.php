@@ -162,7 +162,7 @@ class MessagehubRepository extends BaseRepository
      * @return Collection notificationDetails
      */
     public function getNotificationById($id){
-        return $this->model::with('pushNotifications','pushNotifications.employee')->find($id);
+        return $this->model::with('pushNotifications','textNotifications','pushNotifications.employee')->find($id);
     }
 
     /**
@@ -607,9 +607,10 @@ class MessagehubRepository extends BaseRepository
      */
     public function getTextNotificationLogCount($message_id)
     {
+        //sum(case when STATUS = 'queued' then 1 else 0 end) as queued,
         return DB::table('notifications_message_hub_text_log')
             ->selectRaw(
-                "sum(case when STATUS = 'queued' then 1 else 0 end) as queued,sum(case when STATUS = 'sent' then 1 else 0 end) as sent,sum(case when STATUS = 'failed' then 1 else 0 end) as failed,sum(case when STATUS = 'undelivered' then 1 else 0 end) as undelivered,sum(case when STATUS = 'delivered' OR STATUS = 'success' then 1 else 0 end) as delivered"
+                "sum(case when STATUS = 'sent' then 1 else 0 end) as sent,sum(case when STATUS = 'delivered' OR STATUS = 'success' then 1 else 0 end) as delivered,sum(case when STATUS = 'undelivered' then 1 else 0 end) as undelivered,sum(case when STATUS = 'failed' then 1 else 0 end) as failed"
             )
             ->where('message_id', $message_id)->first();
     }

@@ -224,11 +224,14 @@ class MessagehubManager
      */
     public function getNotificationLogCount($id, $notificationType)
     {   
-        if($notificationType == config('messagehub.notification.type.INAPP')){
-            return (array) $this->messagehubRepository->getPushNotificationLogCount($id);
-        }else{
-            return (array) $this->messagehubRepository->getTextNotificationLogCount($id);
+        $countData = [];
+        if(in_array($notificationType, [config('messagehub.notification.type.INAPP'), config('messagehub.notification.type.INAPPTEXT')])){
+            $countData['push-notification'] = (array) $this->messagehubRepository->getPushNotificationLogCount($id);
         }
+        if(in_array($notificationType, [config('messagehub.notification.type.TEXT'), config('messagehub.notification.type.INAPPTEXT')])){
+            $countData['text-notification'] = (array) $this->messagehubRepository->getTextNotificationLogCount($id);
+        }
+        return $countData;
     }
 
     /*
@@ -508,7 +511,6 @@ class MessagehubManager
      */
     public function unreadNotificationMessages($userId,$timestamp)
     {
-
         return $this->messagehubRepository->unreadNotificationMessages($userId, $timestamp);
     }
 
