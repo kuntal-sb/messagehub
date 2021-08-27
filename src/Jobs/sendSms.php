@@ -41,10 +41,7 @@ class sendSms implements ShouldQueue
             Log::info("Send SMS JOB Started");
 
             $twilioManager = app()->make(TwilioManager::class);
-            $employees = $this->data['employees'];
-            foreach ($employees as $employeeData) {
-                $twilioManager->sendMessageHubSMS($this->data['message'],$this->data['message_id'],$this->data['employer_id'], $employeeData);
-            }
+            $twilioManager->sendMessageHubSMS($this->data['message'],$this->data['message_id'],$this->data['employer_id'], $this->data['employee']);
 
             Log::info("Send SMS JOB END");
         } catch (Exception $e) {

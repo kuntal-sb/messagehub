@@ -44,6 +44,16 @@ class MessagehubRepository extends BaseRepository
 
     public $sms_enabled = false;
 
+    private $thumbnailPath = "";
+
+    private $notificationType = "";
+
+    private $transactionId = "";
+
+    private $notificationData = [];
+
+    private $notificationIds = [];
+
     /**
      * MessagehubRepository constructor.
      * @param NotificationMessageHub $notificationMessage
@@ -57,6 +67,21 @@ class MessagehubRepository extends BaseRepository
 
     public function setSmsEnabled($value){
         $this->sms_enabled = $value;
+    }
+
+    public function setThumbnailPath($path){
+        $this->thumbnailPath = $path;
+    }
+
+    public function setNotificationType($value){
+        $this->notificationType = $value;
+    }
+
+    public function setNotificationData($data){
+        $this->notificationData = $data;
+
+        $this->notificationData['message'] = $this->model->parseMessage($this->notificationData['message']);
+        $this->notificationData['title'] = ($this->notificationData['title'])?$this->notificationData['title']:'';
     }
 
     /**
@@ -141,19 +166,19 @@ class MessagehubRepository extends BaseRepository
      * @param Array employerArr
      * @return Schedule Push Notification Message
      */
-    public function processPushNotification($employerList, $brokerId, $requestData, $thumbnailPath, $transactionId, $type = 'web')
+    public function processPushNotification($employerList, $brokerId)
     {
         try {
-            if($requestData->send_to == 'send_to_all'){
-                $employees = [];
+            if($this->notificationData['send_to'] == 'send_to_all'){
+                $employeeList = [];
             }else{
-                $employees = $requestData->employees;
+                $employees = $this->notificationData['employees'];
             }
 
             //Get the assigned app of the broker who created this employer
             $assigned_app = $this->getAppDetails($brokerId);
 
-            $appIdentifier = $assigned_app->app_identifier;
+            //$appIdentifier = $assigned_app->app_identifier;
             $androidApi = $assigned_app->android_api;
             $appStoreTarget = $assigned_app->app_store_target;
             
@@ -161,18 +186,14 @@ class MessagehubRepository extends BaseRepository
             $iosCertificateFile = public_path().$assigned_app->ios_certificate_file;
             $fcmKey = public_path().'/push/'.$assigned_app->fcm_key;
 
-            $message = $this->model->parseMessage($requestData->message);
-            $title = ($requestData->title)?$requestData->title:'';
-
             foreach($employerList as $employerId){
-                if(empty($employees)){
+                if(empty($employeeList)){
                     $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId]);
                 }
 
                 if(!empty($employees)){
-                    $notificationMessageId = $this->model->insertNotificationData(config('messagehub.notification.type.INAPP'), $transactionId, $message, $requestData, $thumbnailPath);
                     foreach($employees as $employee){
-                        $this->dispatchPushNotification($employee, $employerId, $notificationMessageId, $message, $iosCertificateFile, $androidApi, $fcmKey, $title, $appStoreTarget);
+                        $this->dispatchPushNotification($employee, $employerId, $iosCertificateFile, $androidApi, $fcmKey, $appStoreTarget);
                     }
                 }
             }
@@ -186,8 +207,12 @@ class MessagehubRepository extends BaseRepository
         return ['status_code' => $status_code, 'message' => $message];
     }
 
-    //Send Push notification to Queue
-    public function dispatchPushNotification($employee, $employerId, $notificationMessageId, $message, $iosCertificateFile, $androidApi, $fcmKey, $title , $appStoreTarget)
+    /**
+     *  Send Push notification to Queue
+     *  @param
+     *  @return
+     */    
+    public function dispatchPushNotification($employee, $employerId, $iosCertificateFile, $androidApi, $fcmKey , $appStoreTarget)
     {
         try {
             if(is_array($employee)){
@@ -211,9 +236,11 @@ class MessagehubRepository extends BaseRepository
 
                 $deviceType = $this->getDeviceType($deviceType);
 
-                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $message,'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $title,'app_store_target' => $appStoreTarget );
+                $notificationMessageId = $this->addNotification($employerId);
 
-                $seconds=10+($this->increment*2);
+                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $this->notificationData['message'],'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $this->notificationData['title'],'app_store_target' => $appStoreTarget );
+
+                $seconds=0+($this->increment*2);
                 sendNotifications::dispatch($send_data)->delay($seconds);
                 $this->increment ++;
             }
@@ -223,19 +250,18 @@ class MessagehubRepository extends BaseRepository
     }
 
     /**
-     * Prepare data to send Text notification
+     * Get All employee data for each employer and then passe it to send into job
      * @param Array request
      * @param Array employerIds
      * @return Schedule TEXT Message
      */
-    public function processTxtNotifications($request, $transactionId, $employerIds)
+    public function processTxtNotifications($employerIds)
     {
         try {
             foreach ($employerIds as $key => $employerId) {
                 $employees = $this->getEmployeeBySentType($request, $employerId);
 
-                //Job to send sms via twilio
-                $this->dispatchTextNotification($employees, $employerId, $request, $transactionId);
+                $this->dispatchTextNotification($employees, $employerId);
             }
 
             $message = 'Your users will receive the SMS shortly!';
@@ -248,29 +274,51 @@ class MessagehubRepository extends BaseRepository
         return ['status_code' => $status_code, 'message' => $message];
     }
 
+    /**
+     * Send Text notification to Queue for each employee
+     * @param
+     * @return
+     */
+    public function dispatchTextNotification($employees,$employerId)
+    {
+        try {
+            $notificationMessageId = $this->addNotification($employerId);
+
+            foreach ($employees as $employee) {
+                $smsData = ['employee' => $employee,
+                            'employer_id' => $employerId,
+                            'message' => $this->notificationData['message'],
+                            'message_id' => $notificationMessageId];
+
+                //Send Text notifications to queue
+                sendSms::dispatch($smsData)->delay(Carbon::now()->addSeconds(5));
+            }
+        } catch (Exception $e) {
+            Log::error($e);
+        }
+    }
+
+    /**
+     * Add Notification to Message hub Notification table and store message ids to array to not create duplicate entry for type "in-ap-text"
+     * @param employerId
+     * @return MessageId
+     */
+    public function addNotification($employerId)
+    {
+        if(!isset($this->notificationIds[$this->notificationType]['messageId'][$employerId])){
+            $notificationMessageId = $this->model->insertNotificationData($this->notificationType, $this->transactionId, $this->notificationData, $this->thumbnailPath);
+            $this->notificationIds[$this->notificationType]['messageId'][$employerId] = $notificationMessageId;
+        }
+        return $this->notificationIds[$this->notificationType]['messageId'][$employerId];
+    }
+
+
     public function getEmployeeBySentType($request, $employerId = '')
     {
         if($request->send_to == 'send_to_all'){
             return $this->getEmployeeList($request->notification_type, $employerId);
         }else{
             return $this->getPhoneNumberByUser($request->employees);
-        }
-    }
-
-    //Send Text notification to Queue
-    public function dispatchTextNotification($employees,$employerId,$requestData,$transactionId)
-    {
-        try {
-            $message = $this->model->parseMessage($requestData->message);
-            $title = ($requestData->title)?$requestData->title:'';
-            $messageId = $this->model->insertNotificationData(config('messagehub.notification.type.TEXT'), $transactionId, $message, $requestData);
-
-            $smsData = ['employees' => $employees, 'message' => $message, 'employer_id' => $employerId, 'message_id' => $messageId];
-
-            //Send push notifications to queue
-            sendSms::dispatch($smsData)->delay(Carbon::now()->addSeconds(10));
-        } catch (Exception $e) {
-            Log::error($e);
         }
     }
 
@@ -409,8 +457,11 @@ class MessagehubRepository extends BaseRepository
      * @param string notificationType
      * @return  TransactionID
      */
-    public function generateTransactionId($notificationType)
+    public function generateTransactionId($notificationType = null)
     {
+        if($notificationType == null){
+            $notificationType = $this->notification_type;
+        }
         $tmpCounter = $this->model::latest('id')->where('notification_type',$notificationType)->first();
         $tmpCounter = ($tmpCounter)?$tmpCounter->id:0;
 
@@ -432,7 +483,7 @@ class MessagehubRepository extends BaseRepository
                 break;
         }
 
-        return  $prefix.date('Ym').'-'.str_pad(++$tmpCounter, 6, '0', STR_PAD_LEFT);
+        return  $this->transactionId = $prefix.date('Ym').'-'.str_pad(++$tmpCounter, 6, '0', STR_PAD_LEFT);
     }
 
     /**

@@ -51,43 +51,41 @@ class MessagehubManager
         return $this->messagehubRepository->getNotificationById($id);
     }
 
+    public function generateTransactionId($notificationType = null)
+    {
+        return $this->messagehubRepository->generateTransactionId($notificationType);
+    }
+
+    public function setNotificationType($notificationType)
+    {
+        return $this->messagehubRepository->setNotificationType($notificationType);
+    }
+
+    public function setNotificationData($data)
+    {
+        return $this->messagehubRepository->setNotificationData($data);
+    }
+
     /**
-     * evalTxtNotifications.
-     * @param Request $request
+     * processNotifications.
+     * @param Request $requestData
      * @param array $employerIds
      * @param int $brokerId
      * @return array [status code, message]
      */
-    public function evalTxtNotifications($request, $employerIds, $brokerId)
+    public function processNotifications($brokerId, $employerIds, $notificationType)
     {
-        try{
-            $transactionId = $this->messagehubRepository->generateTransactionId($request->notification_type);
-            extract($this->messagehubRepository->processTxtNotifications($request, $transactionId, $employerIds));            
-        }catch (Exception $e){
-            Log::error($e);
-            $status_code = 400;
-            $message = $e->getMessage();
+        $this->messagehubRepository->generateTransactionId();
+
+        //TEXT Message
+        if($notificationType == config('messagehub.notification.type.TEXT') || $notificationType == config('messagehub.notification.type.INAPPTEXT')){
+            Log::info('---TXT Notification---');
+            extract($this->messagehubRepository->processTxtNotifications($employerIds));
         }
-        return ['status_code' => $status_code, 'message' => $message];
-    }
-
-    public function evalPushNotifications($request, $employerIds, $brokerId)
-    {
-        try {
-            $imgData = $this->storeImage($request);
-            if($imgData['status_code'] == 400){
-                return ['status_code' => $imgData['status_code'], 'message' => $imgData['message']];
-            }else{
-                $thumbnail_path = $imgData['thumbnail_path'];
-            }
-
-            $transactionId = $this->messagehubRepository->generateTransactionId($request->notification_type);
-            extract($this->messagehubRepository->processPushNotification($employerIds,$brokerId,$request,$thumbnail_path, $transactionId));
-            
-        } catch (Exception $e) {
-            Log::error($e);
-            $status_code = 400;
-            $message = $e->getMessage();
+        //Push Notification
+        if($notificationType == config('messagehub.notification.type.INAPP') || $notificationType == config('messagehub.notification.type.INAPPTEXT')){
+            Log::info('---Push Notification---');
+            extract($this->messagehubRepository->processPushNotification($employerIds,$brokerId));
         }
         return ['status_code' => $status_code, 'message' => $message];
     }
@@ -98,12 +96,6 @@ class MessagehubManager
      */
     public function scheduleNotification($requestData)
     {
-        $imgData = $this->storeImage($requestData);
-        if($imgData['status_code'] == 400){
-            return ['status_code' => $imgData['status_code'], 'message' => $imgData['message']];
-        }else{
-            $thumbnail_path = $imgData['thumbnail_path'];
-        }
         extract($this->messagehubRepository->scheduleNotification($requestData, $requestData->notification_type, $thumbnail_path));
         return ['status_code' => $status_code, 'message' => $message];
     }
@@ -138,7 +130,7 @@ class MessagehubManager
                 $s3Service = new S3Service;
                 $response = $s3Service->uploadFile($filePath, 's3', $input);
                 if($response['status_code'] == 200){
-                    $thumbnail_path = $response['file_url'];
+                    $this->messagehubRepository->setThumbnailPath($response['file_url']);
                 }
             }else{
                 $thumbnail_path = '';
