@@ -176,7 +176,7 @@ class MessagehubRepository extends BaseRepository
             if($this->notificationData['send_to'] == 'send_to_all'){
                 $employeeList = [];
             }else{
-                $employees = $this->notificationData['employees'];
+                $employees = $employeeList = $this->notificationData['employees'];
             }
 
             //Get the assigned app of the broker who created this employer
