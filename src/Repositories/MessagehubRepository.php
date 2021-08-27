@@ -77,11 +77,15 @@ class MessagehubRepository extends BaseRepository
         $this->notificationType = $value;
     }
 
+    public function getNotificationType(){
+        return $this->notificationType;
+    }
+
     public function setNotificationData($data){
         $this->notificationData = $data;
 
         $this->notificationData['message'] = $this->model->parseMessage($this->notificationData['message']);
-        $this->notificationData['title'] = ($this->notificationData['title'])?$this->notificationData['title']:'';
+        $this->notificationData['title'] = !empty($this->notificationData['title'])?$this->notificationData['title']:'';
     }
 
     /**
@@ -258,8 +262,9 @@ class MessagehubRepository extends BaseRepository
     public function processTxtNotifications($employerIds)
     {
         try {
+            Log::info(json_encode($employerIds));
             foreach ($employerIds as $key => $employerId) {
-                $employees = $this->getEmployeeBySentType($request, $employerId);
+                $employees = $this->getEmployeeBySentType($employerId);
 
                 $this->dispatchTextNotification($employees, $employerId);
             }
@@ -313,12 +318,12 @@ class MessagehubRepository extends BaseRepository
     }
 
 
-    public function getEmployeeBySentType($request, $employerId = '')
+    public function getEmployeeBySentType($employerId = '')
     {
-        if($request->send_to == 'send_to_all'){
-            return $this->getEmployeeList($request->notification_type, $employerId);
+        if($this->notificationData['send_to'] == 'send_to_all'){
+            return $this->getEmployeeList($this->notificationType, $employerId);
         }else{
-            return $this->getPhoneNumberByUser($request->employees);
+            return $this->getPhoneNumberByUser($this->notificationData['employees']);
         }
     }
 
@@ -460,7 +465,7 @@ class MessagehubRepository extends BaseRepository
     public function generateTransactionId($notificationType = null)
     {
         if($notificationType == null){
-            $notificationType = $this->notification_type;
+            $notificationType = $this->notificationType;
         }
         $tmpCounter = $this->model::latest('id')->where('notification_type',$notificationType)->first();
         $tmpCounter = ($tmpCounter)?$tmpCounter->id:0;
@@ -488,48 +493,43 @@ class MessagehubRepository extends BaseRepository
 
     /**
      * scheduleNotification
-     * @param array employerIds
-     * @param int brokerId
-     * @param Request requestData
-     * @param string thumbnailPath
-     * @param string notificationType
      * @return  Store Data into Mongodb for queue
      */
-    public function scheduleNotification($requestData, $notificationType,  $thumbnailPath = '')
+    public function scheduleNotification()
     {
         try {
-            $data = $requestData->all();
+            $data = $this->notificationData;
 
-            if(!empty($requestData->employers)){
+            if(!empty($this->notificationData['employers'])){
                 $data['employers'] = [];
-                foreach ($requestData->employers as $key => $employer) {
+                foreach ($this->notificationData['employers'] as $key => $employer) {
                     $data['employers'][] = base64_decode($employer);
                 }
             }
             
-            if($requestData->sent_type == 'choose-employer' && empty($data['employers'])){
+            if($this->notificationData['sent_type'] == 'choose-employer' && empty($data['employers'])){
                 extract($this->getBrokerAndEmployerId(Session::get('role')));
                 $data['employers'][] = $employerId;
             }
 
             $data['created_by'] = Auth::user()->id;
             $data['created_as'] = getEmployerId();
-            $data['thumbnail'] = $thumbnailPath;
-            $data['notification_type'] = $notificationType;
+            $data['thumbnail'] = $this->thumbnailPath;
+            $data['notification_type'] = $this->notificationType;
 
-            $data['schedule_time'] = $requestData->get('schedule_time');
-            $data['schedule_date'] = date('Y-m-d',strtotime($requestData->get('schedule_date')));
+            $data['schedule_time'] = $this->notificationData['schedule_time'];
+            $data['schedule_date'] = date('Y-m-d',strtotime($this->notificationData['schedule_date']));
 
             //Calculate UTC time based on given time and store UTC time in data.
-            date_default_timezone_set($requestData->get('timezone'));
+            date_default_timezone_set($this->notificationData['timezone']);
 
             $sid = $data['schedule_date'].' '.$data['schedule_time'];
             $data['scheduled_utc_time'] = gmdate('Y-m-d H:i',strtotime($sid));
 
             unset($data['brokers']);
 
-            if($schedule_id = $requestData->schedule_id){
-                $notificationSchedule = NotificationSchedule::where('_id',$schedule_id)->update($data);
+            if(!empty($this->notificationData['schedule_id'])){
+                $notificationSchedule = NotificationSchedule::where('_id',$this->notificationData['schedule_id'])->update($data);
                 if($notificationSchedule->id == 200){
                     $response = ['status_code'=> 200,'message'=>'Schedule was updated successfully'];
                 }else{

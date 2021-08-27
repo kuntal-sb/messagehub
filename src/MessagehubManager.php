@@ -68,22 +68,20 @@ class MessagehubManager
 
     /**
      * processNotifications.
-     * @param Request $requestData
      * @param array $employerIds
      * @param int $brokerId
      * @return array [status code, message]
      */
-    public function processNotifications($brokerId, $employerIds, $notificationType)
+    public function processNotifications($employerIds, $brokerId = null)
     {
-        $this->messagehubRepository->generateTransactionId();
-
+        $notificationType = $this->messagehubRepository->getNotificationType();
         //TEXT Message
-        if($notificationType == config('messagehub.notification.type.TEXT') || $notificationType == config('messagehub.notification.type.INAPPTEXT')){
+        if(in_array($notificationType, [config('messagehub.notification.type.TEXT'), config('messagehub.notification.type.INAPPTEXT')])){
             Log::info('---TXT Notification---');
             extract($this->messagehubRepository->processTxtNotifications($employerIds));
         }
         //Push Notification
-        if($notificationType == config('messagehub.notification.type.INAPP') || $notificationType == config('messagehub.notification.type.INAPPTEXT')){
+        if(in_array($notificationType, [config('messagehub.notification.type.INAPP'), config('messagehub.notification.type.INAPPTEXT')])){
             Log::info('---Push Notification---');
             extract($this->messagehubRepository->processPushNotification($employerIds,$brokerId));
         }
@@ -94,9 +92,9 @@ class MessagehubManager
      * scheduleNotification
      * 
      */
-    public function scheduleNotification($requestData)
+    public function scheduleNotification()
     {
-        extract($this->messagehubRepository->scheduleNotification($requestData, $requestData->notification_type, $thumbnail_path));
+        extract($this->messagehubRepository->scheduleNotification());
         return ['status_code' => $status_code, 'message' => $message];
     }
 
@@ -373,45 +371,22 @@ class MessagehubManager
         return $this->messagehubRepository->getBrokerList($role);
     }
 
-    /* 
-    * processScheduledNotifications (Single Record)
-    * Add notification to queue for scheduled ones
-    *
-    */
+    /** 
+     * processScheduledNotifications (Single Record)
+     * Add notification to queue for scheduled ones
+     */
     public function processScheduledNotifications($notifications)
     {
         try {
-            $transactionId = $this->messagehubRepository->generateTransactionId($notifications->notification_type);  
-            
+            $this->setNotificationType($notifications->notification_type);
+            $this->setNotificationData($notifications->toArray());
+            $this->generateTransactionId();
+           
             if($notifications->sent_type == 'choose-app' && !empty($notifications->apps)){// If schedule by admin app wise
-                foreach ($notifications->apps as $key => $appId) {
-                    $brokerIds = $this->getAppBrokers([$appId]);
-                    if(empty($brokerIds)){
-                        continue;
-                    }
-                    $employerIds = array_column($this->getEmployerList($brokerIds,[], true), 'id');
-
-                    if(empty($employerIds)){
-                        continue;
-                    }
-
-                    if(in_array($notifications->notification_type, [config('messagehub.notification.type.INAPP'), config('messagehub.notification.type.INAPPTEXT')])){
-                        $this->messagehubRepository->processPushNotification($employerIds, $brokerIds[0], $notifications,$notifications->thumbnail, $transactionId, 'command');
-                    }
-
-                    if(in_array($notifications->notification_type, [config('messagehub.notification.type.TEXT'), config('messagehub.notification.type.INAPPTEXT')])){
-                        $this->messagehubRepository->processTxtNotifications($notifications, $transactionId, $employerIds);
-                    }
-                }
+                $this->processNotificationsByApp($notifications->apps);
             }else{
-                if(in_array($notifications->notification_type, [config('messagehub.notification.type.INAPP'), config('messagehub.notification.type.INAPPTEXT')])){
-                    extract($this->messagehubRepository->getBrokerAndEmployerById($notifications->employers[0]));
-                    $this->messagehubRepository->processPushNotification($notifications->employers, $brokerId, $notifications,$notifications->thumbnail, $transactionId, 'command');
-                }
-
-                if(in_array($notifications->notification_type, [config('messagehub.notification.type.TEXT'), config('messagehub.notification.type.INAPPTEXT')])){
-                    $this->messagehubRepository->processTxtNotifications($notifications, $transactionId, $notifications->employers);
-                }
+                extract($this->messagehubRepository->getBrokerAndEmployerById($notifications->employers[0]));
+                extract($this->processNotifications($notifications->employers, $brokerId));
             }
 
             //Remove record from scheduled list
@@ -420,6 +395,28 @@ class MessagehubManager
             Log::info('Launch was scheduled and deleted successfully');
         } catch (Exception $e) {
             Log::error($e);
+        }
+    }
+
+    /**
+     * Process each selected app and send data to prcoess for text/push notifications
+     * @param Array apps
+     * @return
+     */
+    public function processNotificationsByApp($apps)
+    {
+        foreach ($notifications->apps as $key => $appId) {
+            $brokerIds = $this->getAppBrokers([$appId]);
+            if(empty($brokerIds)){
+                continue;
+            }
+            $employerIds = array_column($this->getEmployerList($brokerIds,[], true), 'id');
+
+            if(empty($employerIds)){
+                continue;
+            }
+
+            extract($this->processNotifications($employerIds, $brokerIds[0]));
         }
     }
 

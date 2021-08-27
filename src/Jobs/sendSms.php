@@ -38,7 +38,7 @@ class sendSms implements ShouldQueue
     {
         config(['logging.default' => 'smsNotification']);
         try {
-            Log::info("Send SMS JOB Started");
+            Log::info("Send SMS JOB Started: ". json_encode($this->data));
 
             $twilioManager = app()->make(TwilioManager::class);
             $twilioManager->sendMessageHubSMS($this->data['message'],$this->data['message_id'],$this->data['employer_id'], $this->data['employee']);

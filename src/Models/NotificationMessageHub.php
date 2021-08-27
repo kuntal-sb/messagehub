@@ -58,17 +58,17 @@ class NotificationMessageHub extends Model
     public function insertNotificationData($type, $transactionId, $requestData, $thumbnailPath='')
     {
         $message_details = array(
-                    'created_by'    => ($requestData['created_by'])?$requestData['created_by']:auth()->user()->id,
-                    'created_as'    => ($requestData['created_as'])?$requestData['created_as']:getEmployerId(),
+                    'created_by'    => !empty($requestData['created_by'])?$requestData['created_by']:auth()->user()->id,
+                    'created_as'    => !empty($requestData['created_as'])?$requestData['created_as']:getEmployerId(),
                     'transaction_id'=> $transactionId,
                     'message'       => $requestData['message'],
-                    'title'         => ($requestData['title'])?$requestData['title']:'',
-                    'summary'       => ($requestData['summary'])?$requestData['summary']:'',
+                    'title'         => !empty($requestData['title'])?$requestData['title']:'',
+                    'summary'       => !empty($requestData['summary'])?$requestData['summary']:'',
                     'notification_type' => $type,
-                    'action_url'    => ($requestData['url'])?$requestData['url']:'',
+                    'action_url'    => !empty($requestData['url'])?$requestData['url']:'',
                     'thumbnail'     => $thumbnailPath,
-                    'valid_from'    => ($requestData['valid_from'])?date('Y-m-d',strtotime($requestData['valid_from'])):Carbon::now(),
-                    'expiry_date'   => ($requestData['expiry_date'])?date('Y-m-d',strtotime($requestData['expiry_date'])):'',
+                    'valid_from'    => !empty($requestData['valid_from'])?date('Y-m-d',strtotime($requestData['valid_from'])):Carbon::now(),
+                    'expiry_date'   => !empty($requestData['expiry_date'])?date('Y-m-d',strtotime($requestData['expiry_date'])):'',
                     'created_at'    => Carbon::now(), 
                     'updated_at'    => Carbon::now()
                    );
