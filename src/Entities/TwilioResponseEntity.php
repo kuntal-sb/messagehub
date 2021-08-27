@@ -82,7 +82,7 @@ class TwilioResponseEntity
     public function __construct($dataObj, $employeeId, $employerId, $status = null, $mobileNumber = null, $messageId = null, $smsType = null)
     {
         $this->messageId = !empty($messageId) ? $messageId : null;
-        $this->dateCreated = !empty($dataObj->dateCreated) ? $dataObj->dateCreated->format('Y-m-d H:i:s') : null;
+        $this->dateCreated = !empty($dataObj->dateCreated) ? $dataObj->dateCreated->format('Y-m-d H:i:s') : date('Y-m-d');
         $this->dateSent = !empty($dataObj->dateSent) ? $dataObj->dateSent->format('Y-m-d H:i:s') : null;
         $this->dateUpdated = !empty($dataObj->dateUpdated) ? $dataObj->dateUpdated->format('Y-m-d H:i:s') : null;
         $this->messageSID = !empty($dataObj->messagingServiceSid) ? $dataObj->messagingServiceSid : null;
