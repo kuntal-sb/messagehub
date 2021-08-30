@@ -261,7 +261,7 @@ class MessagehubManager
             $invoiceNo = 'INV-'.date('Y').'-'.str_pad(++$lastId, 6, '0', STR_PAD_LEFT);
 
             $invoiceToCreate = [
-                'user_id' => $notification->employer_id,
+                'user_id' => $notification->created_as,
                 'invoice_no' => $invoiceNo,
                 'message_count' => $message_count,
                 'amount' => $amount,
@@ -511,6 +511,7 @@ class MessagehubManager
      */
     public function unreadNotificationMessages($userId,$timestamp)
     {
+
         return $this->messagehubRepository->unreadNotificationMessages($userId, $timestamp);
     }
 
@@ -555,5 +556,15 @@ class MessagehubManager
         $where= ['employee_id'=>$employee_id, 'message_id'=> $notification_id];
 
         $this->messagehubRepository->updateNotificationLogByParam($where, $update_data);
+    }
+
+    /*
+     * Delete Notifications
+     * @param schedule Id
+     * @return
+     */
+    public function removeNotifications($id)
+    {
+        $this->messagehubRepository->deleteByParams(['id'=>$id]);
     }
 }

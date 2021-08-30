@@ -553,7 +553,7 @@ class MessagehubRepository extends BaseRepository
 
     public function unreadNotificationMessages($user_id, $timestamp) {
         $query = NotificationMessageHubPushLog::where('notifications_message_hub_push_log.read_status', 0)
-                //->where('notifications_message_hub.is_delete', 0)
+                ->whereNull('notifications_message_hub.deleted_at')
                 ->WhereDate('notifications_message_hub.expiry_date', '>=', Carbon::now()->format('Y-m-d'));
 
         return $this->getNotifications($query, $user_id, $timestamp)->count();
@@ -639,9 +639,10 @@ class MessagehubRepository extends BaseRepository
                             ->whereNull('notifications_message_hub.invoice_id')
                             ->whereDate('notifications_message_hub.created_at','>=', $startDate)
                             ->whereDate('notifications_message_hub.created_at','<=', $endDate)
+                            ->withTrashed()
                             ->whereRaw(' `notifications_message_hub`.`created_as` = `notifications_message_hub_text_log`.`employer_id`')
-                            ->selectRaw('group_concat(DISTINCT notifications_message_hub.id) as messageids,notifications_message_hub_text_log.employer_id,notifications_message_hub.created_by')
-                            ->groupBy('notifications_message_hub_text_log.employer_id')
+                            ->selectRaw('group_concat(DISTINCT notifications_message_hub.id) as messageids,notifications_message_hub_text_log.employer_id,notifications_message_hub.created_by,notifications_message_hub.created_as')
+                            ->groupBy('notifications_message_hub.created_as')
                             ->orderBy('notifications_message_hub.created_at', 'desc');
     }
 
@@ -674,6 +675,7 @@ class MessagehubRepository extends BaseRepository
                             ->whereDate('notifications_message_hub.created_at','>=', $startDate)
                             ->whereDate('notifications_message_hub.created_at','<=', $endDate)
                             ->whereIn('notifications_message_hub.notification_type',[config('messagehub.notification.type.TEXT'),config('messagehub.notification.type.INAPPTEXT')])
+                            ->withTrashed()
                             ->whereRaw(' `notifications_message_hub`.`created_as` = `notifications_message_hub_text_log`.`employer_id`')
                             ->select('notifications_message_hub_text_log.id','notifications_message_hub_text_log.sms_type','notifications_message_hub_text_log.status','notifications_message_hub_text_log.mobile_number','notifications_message_hub_text_log.created_at','notifications_message_hub_text_log.employee_id','notifications_message_hub_text_log.employer_id');
 
@@ -723,8 +725,12 @@ class MessagehubRepository extends BaseRepository
     {
         $role = ($role =='')?Session::get('role'):$role;
         $query = NotificationInvoice::select('notification_invoices.id','notification_invoices.user_id','notification_invoices.paid_by', 'notification_invoices.invoice_no','notification_invoices.message_count','notification_invoices.amount','notification_invoices.tax','notification_invoices.discount','notification_invoices.start_date','notification_invoices.end_date','notification_invoices.status');
-        
-        $employers = $this->getEmployersFilter($role, Auth::user()->id);
+
+        if(loggedinAsEmployer()){
+            $employers = $this->getEmployersFilter($role, Auth::user()->id);
+        }else if($role == config('role.BROKER')){
+            $employers = [Auth::user()->id];
+        }
 
         if(!empty($employers)){
             $query->whereIn('user_id', $employers);
