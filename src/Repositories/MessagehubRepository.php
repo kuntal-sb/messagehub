@@ -187,8 +187,8 @@ class MessagehubRepository extends BaseRepository
             $appStoreTarget = $assigned_app->app_store_target;
             
             //Set file path
-            $iosCertificateFile = public_path().$assigned_app->ios_certificate_file;
-            $fcmKey = public_path().'/push/'.$assigned_app->fcm_key;
+            $iosCertificateFile = public_path().'/push/ios/'.$assigned_app->ios_certificate_file;
+            $fcmKey = public_path().'/push/android/'.$assigned_app->fcm_key;
 
             foreach($employerList as $employerId){
                 if(empty($employeeList)){
