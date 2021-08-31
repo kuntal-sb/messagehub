@@ -334,7 +334,8 @@ class MessagehubRepository extends BaseRepository
      */
     public function sendApns($url, $app_store_target, $badgeCount, $notificationId, $pushMessage, $cert)
     {
-        try{          
+        try{
+            Log::info('Certificate File:'.$cert);
             $headers = array(
                 "apns-topic: ".$app_store_target,
                 "User-Agent: My Sender"
