@@ -363,6 +363,11 @@ class MessagehubManager
         return $this->messagehubRepository->getEmployeeList($type, $employers, $selectedEmployees, $emails);
     }
 
+    public function getEmployeeCount($type, $employers)
+    {
+        return $this->messagehubRepository->getEmployeeCount($type, $employers);
+    }
+
     public function getEmployerList($brokerList, $selectedEmployers = array(), $sms_enabled = false)
     {
         $this->messagehubRepository->setSmsEnabled($sms_enabled);

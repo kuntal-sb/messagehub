@@ -187,8 +187,8 @@ class MessagehubRepository extends BaseRepository
             $appStoreTarget = $assigned_app->app_store_target;
             
             //Set file path
-            $iosCertificateFile = public_path().'/push/ios/'.$assigned_app->ios_certificate_file;
-            $fcmKey = public_path().'/push/android/'.$assigned_app->fcm_key;
+            $iosCertificateFile = public_path().$assigned_app->ios_certificate_file;
+            $fcmKey = public_path().'/push/'.$assigned_app->fcm_key;
 
             foreach($employerList as $employerId){
                 if(empty($employeeList)){
@@ -334,8 +334,7 @@ class MessagehubRepository extends BaseRepository
      */
     public function sendApns($url, $app_store_target, $badgeCount, $notificationId, $pushMessage, $cert)
     {
-        try{
-            Log::info('Certificate File:'.$cert);
+        try{          
             $headers = array(
                 "apns-topic: ".$app_store_target,
                 "User-Agent: My Sender"
@@ -860,6 +859,38 @@ class MessagehubRepository extends BaseRepository
             }
         }
         return $employeeData;
+    }
+
+    /**
+     * return Get the Count of employees based on given employer array.
+     *
+     * @param Array $employers, for which we need to get data
+     * @return int $EmployeesCount
+     */
+    public function getEmployeeCount($type, $employers)
+    {
+        $employeeData = [];
+        if(!is_array($employers)){
+            $employers = [$employers];
+        }
+        $query = User::join('employeedetails','employeedetails.user_id','=','users.id')
+                    ->where('employeedetails.is_demo_account',0)
+                    ->whereIn('users.referer_id',$employers)
+                    ->enabled()
+                    ->active()
+                    ->select('users.id');
+
+        //Get only those users who has downloaded app
+        $query->when(in_array($type,[config('messagehub.notification.type.INAPP')]), function ($q) {
+            return $q->getActiveAppUser();
+        });
+
+        //Get only those users with mobile number
+        $query->when(in_array($type,[config('messagehub.notification.type.TEXT')]), function ($q) use($type) {
+            $q->getUserByMobile()->condHasMobile();
+        });
+
+        return $query->count();
     }
 
     /**return a listing of phone number.
