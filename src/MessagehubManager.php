@@ -552,6 +552,12 @@ class MessagehubManager
         if(isset($requestData->read_status)){
             $update_data['read_status'] = $requestData->read_status;
         }
+        if(isset($requestData->open_status)){
+            $update_data['open_status'] = $requestData->open_status;
+        }
+        if(isset($requestData->delivered_status)){
+            $update_data['delivered_status'] = $requestData->delivered_status;
+        }
         if(isset($requestData->status)){
             $update_data['status'] = $requestData->status;
         }
