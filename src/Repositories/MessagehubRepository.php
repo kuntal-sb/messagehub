@@ -563,7 +563,7 @@ class MessagehubRepository extends BaseRepository
         return $this->getNotifications($query, $user_id, $timestamp)->count();
     }
 
-    public function getNotifications($query, $user_id, $timestamp, $withTrashed = false) {
+    public function getNotifications($query, $user_id, $timestamp,) {
         $query = $query->join('notifications_message_hub','notifications_message_hub.id','=','notifications_message_hub_push_log.message_id')
             ->where('notifications_message_hub_push_log.employee_id', $user_id);
 
@@ -576,9 +576,6 @@ class MessagehubRepository extends BaseRepository
             ->where(function($q) {
                 $q->WhereDate('notifications_message_hub.expiry_date', '>=', Carbon::now()->format('Y-m-d'));
             });
-        if($withTrashed){
-            $query = $query->withTrashed();
-        }
         return $query;
     }
 
@@ -1076,6 +1073,6 @@ class MessagehubRepository extends BaseRepository
                     'notifications_message_hub.expiry_date'
                 )->latest('notifications_message_hub.updated_at');
 
-        return $this->getNotifications($query, $user_id, $timestamp, true);
+        return $this->getNotifications($query, $user_id, $timestamp);
     }
 }
