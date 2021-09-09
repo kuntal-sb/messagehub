@@ -577,8 +577,8 @@ class MessagehubManager
     public function removeNotifications($id)
     {
         $this->messagehubRepository->deleteByParams(['id'=>$id]);
-        // $where= ['message_id'=> $id];
-        // $update_data['updated_at'] = Carbon::now();
-        // $this->messagehubRepository->updateNotificationLogByParam($where, $update_data);
+        $where= ['message_id'=> $id];
+        $update_data['updated_at'] = Carbon::now();
+        $this->messagehubRepository->updateNotificationLogByParam($where, $update_data);
     }
 }
