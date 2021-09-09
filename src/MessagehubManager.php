@@ -529,7 +529,7 @@ class MessagehubManager
     public function getMessagesByUser($userId,$timestamp)
     {
 
-        $unreadCount = $this->unreadNotificationMessages($userId, $timestamp);
+        $unreadCount = $this->unreadNotificationMessages($userId, 0);
         $pushMessage =  $this->messagehubRepository->getMessagesByUser($userId,$timestamp)->get()->toArray();
         return [
             'status_code'   => count($pushMessage) > 0 ? 200 : 400,
