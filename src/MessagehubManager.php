@@ -8,6 +8,7 @@ use Log;
 use Validator;
 use App\Http\Services\S3Service;
 use Carbon\Carbon;
+use Session;
 
 class MessagehubManager
 {
@@ -36,6 +37,40 @@ class MessagehubManager
     {
         try {
             return $this->messagehubRepository->getAllNotificationsByRole($role, $uid);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+        }
+    }
+
+    /**
+     * getAllNotificationsDetails.
+     * @param $request
+     * @return  json data
+     */
+    public function getAllNotificationsDetails($request)
+    {
+        try {
+            if(!empty($request->daterange)){
+                list($startDate,$endDate) = explode('-',$request->daterange);
+                $startDate = date('Y-m-d',strtotime(trim($startDate)));
+                $endDate = date('Y-m-d',strtotime(trim($endDate)));
+            }
+            $startDate = $endDate = '';
+            $employeeId = base64_decode($request->employee_id);
+            $employerId = $request->employer_id;
+            $brokerId = $request->broker_id;
+
+            if(!empty($employerId)){
+                $employerId = [base64_decode($employerId)];
+            }else{
+                if(!empty($brokerId)){
+                    $employerId = array_column($this->messagehubRepository->getEmployerList(base64_decode($brokerId)), 'id');
+                }else{
+                    $employerId = $this->messagehubRepository->getEmployersFilter(Session::get('role'), auth()->user()->id);
+                }
+            }
+
+            return $this->messagehubRepository->getAllNotificationsDetails($request->notificationType, $startDate, $endDate, $employeeId, $employerId);
         } catch (Exception $e) {
             Log::error($e->getMessage());
         }

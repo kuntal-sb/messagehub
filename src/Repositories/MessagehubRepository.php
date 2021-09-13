@@ -149,6 +149,68 @@ class MessagehubRepository extends BaseRepository
         return $notifications;
     }
 
+    /**
+     * getAllNotificationsDetails.
+     * @param 
+     * @return  Query Collection
+     */
+    public function getAllNotificationsDetails($type, $startDate = '', $endDate = '', $employeeIds = null, $employerIds = null)
+    {
+        //$userid = ($uid)?$uid:Auth::user()->id;
+        // $employers = $this->getEmployersFilter($role, $userid);
+        $notifications = DB::table('notifications_message_hub AS x')
+                            ->whereNull('x.deleted_at')
+                            ->select(['x.id','x.message','x.notification_type']);
+
+        if($type == 'in-app'){
+            $notifications->join('notifications_message_hub_push_log','notifications_message_hub_push_log.message_id','=','x.id');
+            $notifications->addSelect('notifications_message_hub_push_log.employee_id as employee_id','notifications_message_hub_push_log.employer_id as employer_id','notifications_message_hub_push_log.status','notifications_message_hub_push_log.created_at');
+
+        }
+
+        if($type == 'text'){
+            $notifications->join('notifications_message_hub_text_log','notifications_message_hub_text_log.message_id','=','x.id');
+            $notifications->addSelect('notifications_message_hub_text_log.employee_id as employee_id','notifications_message_hub_text_log.employer_id as employer_id','notifications_message_hub_text_log.status','notifications_message_hub_text_log.created_at');
+        }
+
+        if($type == ''){
+            $query1 = clone $notifications;
+            $query2 = clone $notifications;
+
+            $query1->join('notifications_message_hub_push_log','notifications_message_hub_push_log.message_id','=','x.id');
+            $query1->addSelect('notifications_message_hub_push_log.employee_id as employee_id','notifications_message_hub_push_log.employer_id as employer_id','notifications_message_hub_push_log.status','notifications_message_hub_push_log.created_at');
+
+            $query2->join('notifications_message_hub_text_log','notifications_message_hub_text_log.message_id','=','x.id');
+            $query2->addSelect('notifications_message_hub_text_log.employee_id as employee_id','notifications_message_hub_text_log.employer_id as employer_id','notifications_message_hub_text_log.status','notifications_message_hub_text_log.created_at');
+
+            $query1->union($query2);
+
+            $notifications = DB::table(DB::raw("({$query1->toSql()}) as x"))
+                                ->select(['x.message', 'x.notification_type', 'x.employee_id','x.employer_id', 'x.status', 'x.created_at']);
+        }
+
+        if(!empty($startDate) && !empty($endDate)){
+            $notifications->whereDate('x.created_at','>=', $startDate)
+                        ->whereDate('x.created_at','<=', $endDate);
+        }
+        
+        if(!empty($employeeIds)){
+            if(is_array($employeeIds)){
+                $notifications->whereIn('employee_id', $employeeIds);
+            }else{
+                $notifications->where('employee_id','=',$employeeIds);
+            }
+        }else{
+            if(!empty($employerIds)){
+                $notifications->whereIn('employer_id', $employerIds);
+            }
+        }
+
+        $notifications->join('users','employee_id','=','users.id');
+             $notifications->addSelect('users.email');
+        return $notifications;
+    }
+
     public function getMessageIds($employers)
     {
         $query1 = NotificationMessageHubPushLog::whereIn('employer_id', $employers)->pluck('message_id')->toArray();
