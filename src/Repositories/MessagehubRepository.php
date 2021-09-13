@@ -627,7 +627,7 @@ class MessagehubRepository extends BaseRepository
     {
         return DB::table('notifications_message_hub_push_log')
             ->selectRaw(
-                "sum(case when STATUS = 'sent' then 1 else 0 end) as sent, sum(case when STATUS = 'delivered' then 1 else 0 end) as delivered,sum(case when STATUS = 'open' OR STATUS = 'read' then 1 else 0 end) as open, sum(case when STATUS = 'failed' then 1 else 0 end) as failed"
+                "sum(case when STATUS = 'sent' then 1 else 0 end) as sent, sum(case when STATUS = 'open' then 1 else 0 end) as open,sum(case when STATUS = 'read' then 1 else 0 end) as `read`, sum(case when STATUS = 'failed' then 1 else 0 end) as failed"
             )
             ->where('message_id', $message_id)->first();
     }
