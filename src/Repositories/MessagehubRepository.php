@@ -156,8 +156,6 @@ class MessagehubRepository extends BaseRepository
      */
     public function getAllNotificationsDetails($type, $startDate = '', $endDate = '', $employeeIds = null, $employerIds = null)
     {
-        //$userid = ($uid)?$uid:Auth::user()->id;
-        // $employers = $this->getEmployersFilter($role, $userid);
         $notifications = DB::table('notifications_message_hub AS x')
                             ->whereNull('x.deleted_at')
                             ->select(['x.id','x.message','x.notification_type']);
@@ -206,11 +204,43 @@ class MessagehubRepository extends BaseRepository
             }
         }
 
-        $notifications->join('users','employee_id','=','users.id');
-             $notifications->addSelect('users.email');
+        $notifications->join('users','employee_id','=','users.id')->addSelect('users.email');
         return $notifications;
     }
 
+
+    /**
+     * getAllNotificationsChartData.
+     * @param 
+     * @return  Query Collection
+     */
+    public function getAllNotificationsChartData($type, $startDate = '', $endDate = '', $employeeIds = null, $employerIds = null)
+    {
+        $data = ['in-app' => '', 'text' => ''];
+        if($type == '' || $type =='in-app'){
+            $query1 = $this->getAllNotificationsDetails('in-app', $startDate, $endDate, $employeeIds, $employerIds);
+            $data['in-app'] = $this->getChartData($query1);
+            
+        }
+
+        if($type == '' || $type=='text')
+        {
+            $query2 = $this->getAllNotificationsDetails('text', $startDate, $endDate, $employeeIds, $employerIds);
+            $data['text'] = $this->getChartData($query2);
+        }
+        return $data;
+    }
+
+
+    public function getChartData($query)
+    {
+        $query->select(
+                    DB::raw("sum(case when STATUS = 'sent' then 1 else 0 end) as sent,sum(case when STATUS = 'delivered' OR STATUS = 'success' then 1 else 0 end) as delivered,sum(case when STATUS = 'undelivered' then 1 else 0 end) as undelivered,sum(case when STATUS = 'failed' then 1 else 0 end) as failed, sum(case when STATUS = 'open' then 1 else 0 end) as open,sum(case when STATUS = 'read' then 1 else 0 end) as `read`, DATE_FORMAT(x.created_at, '%Y-%M') as created_at")
+                );
+        $query->groupBy(DB::raw('YEAR(x.created_at)'), DB::raw('MONTH(x.created_at)'))
+                    ->orderBy('x.created_at', 'desc');
+        return $query->get();
+    }
     public function getMessageIds($employers)
     {
         $query1 = NotificationMessageHubPushLog::whereIn('employer_id', $employers)->pluck('message_id')->toArray();

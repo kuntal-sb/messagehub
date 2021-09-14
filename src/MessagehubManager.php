@@ -50,7 +50,31 @@ class MessagehubManager
     public function getAllNotificationsDetails($request)
     {
         try {
-            if(!empty($request->daterange)){
+            extract($this->prepareReportData($request));
+            return $this->messagehubRepository->getAllNotificationsDetails($request->notificationType, $startDate, $endDate, $employeeId, $employerId);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+        }
+    }
+
+    /**
+     * getAllNotificationsChartData.
+     * @param $request
+     * @return  json data
+     */
+    public function getAllNotificationsChartData($request)
+    {
+        try {
+            extract($this->prepareReportData($request));
+            return $this->messagehubRepository->getAllNotificationsChartData($request->notificationType, $startDate, $endDate, $employeeId, $employerId);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+        }
+    }
+
+    public function prepareReportData($request)
+    {
+        if(!empty($request->daterange)){
                 list($startDate,$endDate) = explode('-',$request->daterange);
                 $startDate = date('Y-m-d',strtotime(trim($startDate)));
                 $endDate = date('Y-m-d',strtotime(trim($endDate)));
@@ -70,10 +94,7 @@ class MessagehubManager
                 }
             }
 
-            return $this->messagehubRepository->getAllNotificationsDetails($request->notificationType, $startDate, $endDate, $employeeId, $employerId);
-        } catch (Exception $e) {
-            Log::error($e->getMessage());
-        }
+            return [ 'startDate' => $startDate, 'endDate' => $endDate, 'employeeId' => $employeeId, 'employerId' => $employerId, 'brokerId' => $brokerId];
     }
 
     /**
