@@ -20,6 +20,7 @@ class NotificationMessageHubTextLog extends Model
         'status',
         'sid',
         'sms_type',
+        'exception_message',
         'created_by'
     );
 

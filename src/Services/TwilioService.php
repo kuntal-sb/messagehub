@@ -57,10 +57,11 @@ class TwilioService
                     $requestPayload
                 );
             }else{
-                Log::info(json_encode($phoneData));    
+                Log::info(json_encode($phoneData));
             }
         } catch (Exception $e) {
             Log::info($e->getMessage());
+            return ['error' => $e->getMessage()];
         }
     }
 

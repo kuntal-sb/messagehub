@@ -53,15 +53,22 @@ class TwilioManager
                 Log::info('Sending SMS to : '.$number);
 
                 $response = TwilioClient::send($number, $message);
-                if ($response) {
+                $exceptionMessage = '';
+
+                if(gettype($response) == 'array' && !empty($response['error'])){
+                    $status = 'failed';
+                    $exceptionMessage = $response['error'];
+                }
+                else if ($response) {
                     $status = 'success';
                 }else{
                     $status = 'failed';
-                    Log::info('Sending SMS failed to : '.$number);
-                    Log::error('Twilio Error : '.json_encode($response));
+                    $exceptionMessage = json_encode($response);
                 }
 
-                $this->twilioRepository->createLog(new TwilioResponseEntity($response, $employeeId, $employerId, $status, $number,$messageId,'message-hub'));
+                Log::info('Twilio '.$status.' : '.json_encode($response));
+
+                $this->twilioRepository->createLog(new TwilioResponseEntity($response, $employeeId, $employerId, $status, $number,$messageId,'message-hub', $exceptionMessage));
             }
 
         } catch (Exception $e) {
@@ -113,20 +120,22 @@ class TwilioManager
      * @param $phone
      * @return mixed|string
      */
-    public function checkPhoneFormat($phone){
-
+    public function checkPhoneFormat($phone)
+    {
         // If number has the + symbol as prefix, no change to make
         if(preg_match('/^\+[0-9]*$/', $phone)){
             return $phone;
         }
         // If number has the (415)555-2671 no change ( its US based number accepted by Twilio )
         if(preg_match('/^\([0-9]{3}\)[0-9]*-[0-9]*$/', $phone)){
-            return $phone;
+            return '+1'.$phone;
         }
         // If number has the 02071838750 no change ( UK based number accepted by Twilio )
         if(preg_match('/^0[0-9]*$/', $phone)){
             return $phone;
         }
+        $phone = str_replace(['(',')','-',' '], '', $phone);
+
         if(strlen($phone) <= 10){
             return '+1'.$phone;
         }

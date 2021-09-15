@@ -63,6 +63,11 @@ class TwilioResponseEntity
      */
     private $status;
 
+    /**
+     * @var mixed
+     */
+    private $exception_message;
+
     
     /**
      * @var
@@ -79,7 +84,7 @@ class TwilioResponseEntity
      * @param $employeeId
      * @param $employerId
      */
-    public function __construct($dataObj, $employeeId, $employerId, $status = null, $mobileNumber = null, $messageId = null, $smsType = null)
+    public function __construct($dataObj, $employeeId, $employerId, $status = null, $mobileNumber = null, $messageId = null, $smsType = null, $exceptionMessage = null)
     {
         $this->messageId = !empty($messageId) ? $messageId : null;
         $this->dateCreated = !empty($dataObj->dateCreated) ? $dataObj->dateCreated->format('Y-m-d H:i:s') : date('Y-m-d');
@@ -93,6 +98,7 @@ class TwilioResponseEntity
         $this->mobileNumber = $mobileNumber ?? (!empty($mobileNumber) ? $mobileNumber : null);
         $this->createdBy = !empty($employerId) ? $employerId : null;
         $this->smsType = !empty($smsType) ? $smsType:self::SMS_TYPE;
+        $this->exception_message = !empty($exceptionMessage) ? $exceptionMessage:null;
     }
 
     /**
@@ -272,6 +278,7 @@ class TwilioResponseEntity
             'messaging_service_sid' => $this->messageSID,
             'mobile_number' => $this->mobileNumber,
             'sid' => $this->sid,
+            'exception_message' => $this->exception_message,
             'created_by' => $this->createdBy
         ];
     }
