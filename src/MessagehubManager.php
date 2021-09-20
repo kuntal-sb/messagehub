@@ -620,7 +620,7 @@ class MessagehubManager
 
         $update_data['updated_at'] = Carbon::now();
 
-        $where= ['employee_id'=>$employee_id, 'message_id'=> $notification_id];
+        $where= ['employee_id'=>$employee_id, 'id'=> $notification_id];
 
         $this->messagehubRepository->updateNotificationLogByParam($where, $update_data);
     }
