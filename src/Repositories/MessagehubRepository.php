@@ -671,6 +671,31 @@ class MessagehubRepository extends BaseRepository
         return $query;
     }
 
+    public function unreadOldNotificationMessages($user_id, $timestamp) 
+    {
+        return $this->notificationOld(DB::table('push_notification_logs'), $user_id, $timestamp)
+                ->where('push_notification_logs.read_status', 0)
+                ->where('notification_messages.is_delete', 0)->count();
+    }
+
+    public function notificationOld($query, $user_id, $timestamp)
+    {
+        $query = $query->join('notification_messages','notification_messages.id','=','push_notification_logs.message_id')
+                ->where('push_notification_logs.employee_id', $user_id);
+
+        if( $timestamp != 0) // for timestamp 0
+        {
+            $query = $query->where('push_notification_logs.updated_at','>=',$timestamp);
+        }
+
+        $query = $query->whereDate('notification_messages.valid_from', '<=', Carbon::now()->format('Y-m-d'))
+            ->where(function($q) {
+                $q->WhereDate('notification_messages.expiry_date', '>=', Carbon::now()->format('Y-m-d'));
+                $q->orWhereDate('notification_messages.expiry_date','=', '0000-00-00 00:00:00');
+            });
+        return $query;
+    }
+
     public function insertNotificationLog($data, $message_id)
     {
         $insert_data = array('employee_id' => $data['employee_id'],
