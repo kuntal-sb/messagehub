@@ -434,7 +434,7 @@ class MessagehubRepository extends BaseRepository
             );
             $http2ch = curl_init();
             curl_setopt($http2ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.'}}';
+            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new"}}';
 
             Log::info('Apn Message: '.$message);
 
@@ -492,7 +492,7 @@ class MessagehubRepository extends BaseRepository
             // Build FCM request payload
             if($data['device_type'] !== 'appNameIOS'){
                 $fcmData = new Data();
-                $fcmData->setPayload(array('data' => ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId]));
+                $fcmData->setPayload(array('data' => ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId,  'message_type' => "new"]));
                 $client -> build($recipient, $notification, $fcmData);
             }else{
                 $client -> build($recipient, $notification);
