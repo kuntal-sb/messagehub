@@ -266,6 +266,7 @@ class MessagehubManager
 
             $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
             if($is_success == 0){
+                Log::error('--exception_message--'.$exception_message);
                 throw new Exception($exception_message);
             }
         }catch(Exception $e){
