@@ -604,7 +604,8 @@ class MessagehubRepository extends BaseRepository
             }
             
             if($this->notificationData['sent_type'] == 'choose-employer' && empty($data['employers'])){
-                extract($this->getBrokerAndEmployerId(Session::get('role')));
+                //extract($this->getBrokerAndEmployerId(Session::get('role')));
+                extract($this->getBrokerAndEmployerById(getEmployerId()));
                 $data['employers'][] = $employerId;
             }
 
