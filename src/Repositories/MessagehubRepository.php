@@ -920,9 +920,31 @@ class MessagehubRepository extends BaseRepository
 
     public function getBrokerAndEmployerById($u_id)
     {
-        $employer_id = $u_id;
-        $broker_id = User::where('id',$u_id)->select('referer_id')->first()->referer_id;
-        return ['employerId' => $employer_id, 'brokerId' =>$broker_id];
+        $user = User::where('id',$u_id)->select('referer_id','broker_id','id')->first();
+        if($user){
+            /*
+            * If user is Employer then referer_id will be broker id
+            * If user is Employee then referer_id will be Employer id and broker_id will be Broker id
+            */
+            if($user->broker_id != 0){
+                $broker_id = $user->broker_id;
+            }else{
+                $broker_id = $user->referer_id;
+            }
+
+            /*
+            * If user is Employer then referer_id will be broker id
+            * If user is Employee then referer_id will be Employer id and broker_id will be Broker id
+            */
+            if($user->broker_id != 0){
+                $employer_id = $user->referer_id;
+            }else{
+                $employer_id = $user->id;
+            }
+
+            return ['employerId' => $employer_id, 'brokerId' => $broker_id];
+        }
+        return ['employerId' => '', 'brokerId' => ''];
     }
 
     /**
