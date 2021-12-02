@@ -25,6 +25,8 @@ use Strivebenifits\Messagehub\Jobs\sendSms;
 use Auth;
 use Session;
 use Illuminate\Database\Eloquent\Builder;
+use App\Http\Repositories\FilterTemplateBlocksRepository;
+use App\Http\Repositories\FilterTemplateDynamicFieldsRepository;
 
 /**
  * Class MessagehubRepository
@@ -154,11 +156,11 @@ class MessagehubRepository extends BaseRepository
      * @param 
      * @return  Query Collection
      */
-    public function getAllNotificationsDetails($type, $startDate = '', $endDate = '', $employeeIds = null, $employerIds = null)
+    public function getAllNotificationsDetails($type, $startDate = '', $endDate = '', $employeeIds = null, $employerIds = null, $filterTemplate = null)
     {
         $notifications = DB::table('notifications_message_hub AS x')
                             ->whereNull('x.deleted_at')
-                            ->select(['x.id','x.message','x.notification_type']);
+                            ->select(['x.id','x.message','x.notification_type','x.filter_value']);
 
         if($type == 'in-app'){
             $notifications->join('notifications_message_hub_push_log','notifications_message_hub_push_log.message_id','=','x.id');
@@ -184,7 +186,7 @@ class MessagehubRepository extends BaseRepository
             $query1->union($query2);
 
             $notifications = DB::table(DB::raw("({$query1->toSql()}) as x"))
-                                ->select(['x.message', 'x.notification_type', 'x.employee_id','x.employer_id', 'x.status', 'x.created_at']);
+                                ->select(['x.message', 'x.notification_type', 'x.employee_id','x.employer_id', 'x.status', 'x.created_at', 'x.filter_value']);
         }
 
         if(!empty($startDate) && !empty($endDate)){
@@ -203,6 +205,10 @@ class MessagehubRepository extends BaseRepository
                 $notifications->whereIn('employer_id', $employerIds);
             }
         }
+		
+		if(!empty($filterTemplate)){
+            $notifications->where('x.filter_value', $filterTemplate);
+        }
 
         $notifications->join('users','employee_id','=','users.id')->addSelect('users.email');
         return $notifications;
@@ -214,18 +220,18 @@ class MessagehubRepository extends BaseRepository
      * @param 
      * @return  Query Collection
      */
-    public function getAllNotificationsChartData($type, $startDate = '', $endDate = '', $employeeIds = null, $employerIds = null)
+    public function getAllNotificationsChartData($type, $startDate = '', $endDate = '', $employeeIds = null, $employerIds = null, $filterTemplate = null)
     {
         $data = ['in-app' => '', 'text' => ''];
         if($type == '' || $type =='in-app'){
-            $query1 = $this->getAllNotificationsDetails('in-app', $startDate, $endDate, $employeeIds, $employerIds);
+            $query1 = $this->getAllNotificationsDetails('in-app', $startDate, $endDate, $employeeIds, $employerIds, $filterTemplate);
             $data['in-app'] = $this->getChartData($query1);
             
         }
 
         if($type == '' || $type=='text')
         {
-            $query2 = $this->getAllNotificationsDetails('text', $startDate, $endDate, $employeeIds, $employerIds);
+            $query2 = $this->getAllNotificationsDetails('text', $startDate, $endDate, $employeeIds, $employerIds, $filterTemplate);
             $data['text'] = $this->getChartData($query2);
         }
         return $data;
@@ -265,8 +271,15 @@ class MessagehubRepository extends BaseRepository
     public function processPushNotification($employerList, $brokerId)
     {
         try {
+            $filterTemplate = '';
+
             if($this->notificationData['send_to'] == 'send_to_all'){
                 $employeeList = [];
+            }
+            else if($this->notificationData['send_to'] == 'send_to_filter_list'){
+                $employeeList = [];
+
+                $filterTemplate = $this->notificationData['filterTemplate'];
             }else{
                 $employees = $employeeList = $this->notificationData['employees'];
             }
@@ -284,7 +297,7 @@ class MessagehubRepository extends BaseRepository
 
             foreach($employerList as $employerId){
                 if(empty($employeeList)){
-                    $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId]);
+                    $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate);
                 }
 
                 if(!empty($employees)){
@@ -414,6 +427,9 @@ class MessagehubRepository extends BaseRepository
     {
         if($this->notificationData['send_to'] == 'send_to_all'){
             return $this->getEmployeeList($this->notificationType, $employerId);
+        }
+        else if($this->notificationData['send_to'] == 'send_to_filter_list'){
+            return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate']);
         }else{
             return $this->getPhoneNumberByUser($this->notificationData['employees']);
         }
@@ -614,14 +630,12 @@ class MessagehubRepository extends BaseRepository
             $data['thumbnail'] = $this->thumbnailPath;
             $data['notification_type'] = $this->notificationType;
 
-            $data['schedule_time'] = $this->notificationData['schedule_time'];
-            $data['schedule_date'] = date('Y-m-d',strtotime($this->notificationData['schedule_date']));
+            $schedule_datetime =  explode(" ",$this->notificationData['schedule_datetime']);
 
-            //Calculate UTC time based on given time and store UTC time in data.
-            date_default_timezone_set($this->notificationData['timezone']);
-
-            $sid = $data['schedule_date'].' '.$data['schedule_time'];
-            $data['scheduled_utc_time'] = gmdate('Y-m-d H:i',strtotime($sid));
+            $data['schedule_time'] = $schedule_datetime[1]." ".$schedule_datetime[2];
+            $data['schedule_date'] = date('Y-m-d',strtotime($schedule_datetime[0]));
+            
+            $data['scheduled_utc_time'] = convertToUtc($this->notificationData['timezone'], $data['schedule_date'].' '.$data['schedule_time']);
 
             unset($data['brokers']);
 
@@ -947,18 +961,36 @@ class MessagehubRepository extends BaseRepository
         return ['employerId' => '', 'brokerId' => ''];
     }
 
+    private function getFilterData($filterTemplate = ''){
+        $filterData = [];
+        $blockData = [];
+
+        if (!empty($filterTemplate)) {
+            $filterTemplateBlocksRepository = app()->make(FilterTemplateBlocksRepository::class);
+            $filterTemplateDynamicFieldsRepository = app()->make(FilterTemplateDynamicFieldsRepository::class);
+
+            $filterData = $filterTemplateDynamicFieldsRepository->get(['template_id' => $filterTemplate]);
+            $blockData = $filterTemplateBlocksRepository->get(['template_id' => $filterTemplate]);
+        }
+
+        return ['filterData' => $filterData, 'blockData' => $blockData];
+    }
+
     /**
      * return Get the list of employees based on given employer array.
      *
      * @param Array $employers, for which we need to get data
      * @return Array $selectedEmployees
      */
-    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array())
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '')
     {
         $employeeData = [];
         if(!is_array($employers)){
             $employers = [$employers];
         }
+
+        extract($this->getFilterData($filterTemplate));
+
         foreach($employers as $employer){
             $query = User::join('employeedetails','employeedetails.user_id','=','users.id')
                         ->where('employeedetails.is_demo_account',0)
@@ -986,13 +1018,16 @@ class MessagehubRepository extends BaseRepository
                 return $q->addSelect('employee_demographics.phone_number');
             });
 
+            if(!empty($filterData) && !empty($blockData)){
+                $query->filter($filterData, $blockData, 'users');
+            }
+
             if($type == config('messagehub.notification.type.INAPPTEXT')){
                 $query1 = clone $query;
                 $query = $query->getUserByMobile()->condHasMobile()->addSelect('employee_demographics.phone_number', DB::raw('null as device_id'), DB::raw('null as device_type'))->get();
                 $query1 = $query1->getActiveAppUser()
                                 ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type', DB::raw('"" as phone_number'))->get();
                 $employeeData = array_merge($employeeData, $query1->merge($query)->toArray());
-
             }else{
                 $employeeData = array_merge($employeeData, $query->get()->toArray());
             }
@@ -1011,12 +1046,15 @@ class MessagehubRepository extends BaseRepository
      * @param Array $employers, for which we need to get data
      * @return int $EmployeesCount
      */
-    public function getEmployeeCount($type, $employers)
+    public function getEmployeeCount($type, $employers, $filterTemplate = '')
     {
         $employeeData = [];
         if(!is_array($employers)){
             $employers = [$employers];
         }
+
+        extract($this->getFilterData($filterTemplate));
+
         $query = User::join('employeedetails','employeedetails.user_id','=','users.id')
                     ->where('employeedetails.is_demo_account',0)
                     ->whereIn('users.referer_id',$employers)
@@ -1033,6 +1071,10 @@ class MessagehubRepository extends BaseRepository
         $query->when(in_array($type,[config('messagehub.notification.type.TEXT')]), function ($q) use($type) {
             $q->getUserByMobile()->condHasMobile();
         });
+
+        if(!empty($filterData) && !empty($blockData)){
+            $query->filter($filterData, $blockData, 'users');
+        }
 
         return $query->count();
     }

@@ -9,6 +9,7 @@ use Validator;
 use App\Http\Services\S3Service;
 use Carbon\Carbon;
 use Session;
+use App\Jobs\SendLogToElastic;
 
 class MessagehubManager
 {
@@ -51,7 +52,7 @@ class MessagehubManager
     {
         try {
             extract($this->prepareReportData($request));
-            return $this->messagehubRepository->getAllNotificationsDetails($request->notificationType, $startDate, $endDate, $employeeId, $employerId);
+            return $this->messagehubRepository->getAllNotificationsDetails($request->notificationType, $startDate, $endDate, $employeeId, $employerId, $request->filterTemplate);
         } catch (Exception $e) {
             Log::error($e->getMessage());
         }
@@ -66,7 +67,7 @@ class MessagehubManager
     {
         try {
             extract($this->prepareReportData($request));
-            return $this->messagehubRepository->getAllNotificationsChartData($request->notificationType, $startDate, $endDate, $employeeId, $employerId);
+            return $this->messagehubRepository->getAllNotificationsChartData($request->notificationType, $startDate, $endDate, $employeeId, $employerId, $request->filterTemplate);
         } catch (Exception $e) {
             Log::error($e->getMessage());
         }
@@ -265,7 +266,22 @@ class MessagehubManager
                     );
 
             $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
-            if($is_success == 0){
+            if($is_success == 1){
+                SendLogToElastic::dispatch([
+                    "userId" => $data['employee_id'],
+                    "screenName" => "MessageHub",
+                    "eventName" => "Delivered",
+                    "eventType" => "Notification",
+                    "notificationId" => $logID
+                ])->onQueue('elastic_queue');
+            }else{
+                SendLogToElastic::dispatch([
+                    "userId" => $data['employee_id'],
+                    "screenName" => "MessageHub",
+                    "eventName" => "Failed",
+                    "eventType" => "Notification",
+                    "notificationId" => $logID
+                ])->onQueue('elastic_queue');
                 Log::error('--exception_message--'.$exception_message);
                 throw new Exception($exception_message);
             }
@@ -415,14 +431,14 @@ class MessagehubManager
         return $this->messagehubRepository->getBrokerAndEmployerById($employer_id);
     }
 
-    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array())
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '')
     {
-        return $this->messagehubRepository->getEmployeeList($type, $employers, $selectedEmployees, $emails);
+        return $this->messagehubRepository->getEmployeeList($type, $employers, $selectedEmployees, $emails, $filterTemplate);
     }
 
-    public function getEmployeeCount($type, $employers)
+    public function getEmployeeCount($type, $employers, $filterTemplate = '')
     {
-        return $this->messagehubRepository->getEmployeeCount($type, $employers);
+        return $this->messagehubRepository->getEmployeeCount($type, $employers, $filterTemplate);
     }
 
     public function getEmployerList($brokerList, $selectedEmployers = array(), $sms_enabled = false)
