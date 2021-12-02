@@ -156,7 +156,7 @@ class MessagehubRepository extends BaseRepository
      * @param 
      * @return  Query Collection
      */
-    public function getAllNotificationsDetails($type, $startDate = '', $endDate = '', $employeeIds = null, $employerIds = null, $filterTemplate = null)
+    public function getAllNotificationsDetails($type = '', $startDate = '', $endDate = '', $employeeIds = '', $employerIds = '', $filterTemplate = '', $searchMessage = '')
     {
         $notifications = DB::table('notifications_message_hub AS x')
                             ->whereNull('x.deleted_at')
@@ -205,9 +205,13 @@ class MessagehubRepository extends BaseRepository
                 $notifications->whereIn('employer_id', $employerIds);
             }
         }
-		
-		if(!empty($filterTemplate)){
+
+        if(!empty($filterTemplate)){
             $notifications->where('x.filter_value', $filterTemplate);
+        }
+
+        if(!empty($searchMessage)){
+            $notifications->where('x.message','like', '%'.$searchMessage.'%');
         }
 
         $notifications->join('users','employee_id','=','users.id')->addSelect('users.email');
@@ -220,18 +224,18 @@ class MessagehubRepository extends BaseRepository
      * @param 
      * @return  Query Collection
      */
-    public function getAllNotificationsChartData($type, $startDate = '', $endDate = '', $employeeIds = null, $employerIds = null, $filterTemplate = null)
+    public function getAllNotificationsChartData($type, $startDate = '', $endDate = '', $employeeIds = null, $employerIds = null, $filterTemplate = null, $searchMessage = null)
     {
         $data = ['in-app' => '', 'text' => ''];
         if($type == '' || $type =='in-app'){
-            $query1 = $this->getAllNotificationsDetails('in-app', $startDate, $endDate, $employeeIds, $employerIds, $filterTemplate);
+            $query1 = $this->getAllNotificationsDetails('in-app', $startDate, $endDate, $employeeIds, $employerIds, $filterTemplate, $searchMessage);
             $data['in-app'] = $this->getChartData($query1);
             
         }
 
         if($type == '' || $type=='text')
         {
-            $query2 = $this->getAllNotificationsDetails('text', $startDate, $endDate, $employeeIds, $employerIds, $filterTemplate);
+            $query2 = $this->getAllNotificationsDetails('text', $startDate, $endDate, $employeeIds, $employerIds, $filterTemplate, $searchMessage);
             $data['text'] = $this->getChartData($query2);
         }
         return $data;
@@ -324,6 +328,7 @@ class MessagehubRepository extends BaseRepository
     public function dispatchPushNotification($employee, $employerId, $iosCertificateFile, $androidApi, $fcmKey , $appStoreTarget)
     {
         try {
+
             if(is_array($employee)){
                 $employeeId  = $employee['id'];
                 $deviceToken = $employee['device_id'];
@@ -972,7 +977,6 @@ class MessagehubRepository extends BaseRepository
             $filterData = $filterTemplateDynamicFieldsRepository->get(['template_id' => $filterTemplate]);
             $blockData = $filterTemplateBlocksRepository->get(['template_id' => $filterTemplate]);
         }
-
         return ['filterData' => $filterData, 'blockData' => $blockData];
     }
 

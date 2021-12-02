@@ -52,7 +52,7 @@ class MessagehubManager
     {
         try {
             extract($this->prepareReportData($request));
-            return $this->messagehubRepository->getAllNotificationsDetails($request->notificationType, $startDate, $endDate, $employeeId, $employerId, $request->filterTemplate);
+            return $this->messagehubRepository->getAllNotificationsDetails($request->notificationType, $startDate, $endDate, $employeeId, $employerId, $request->filterTemplate, isset($request->search_message)?$request->search_message:'');
         } catch (Exception $e) {
             Log::error($e->getMessage());
         }
@@ -67,7 +67,7 @@ class MessagehubManager
     {
         try {
             extract($this->prepareReportData($request));
-            return $this->messagehubRepository->getAllNotificationsChartData($request->notificationType, $startDate, $endDate, $employeeId, $employerId, $request->filterTemplate);
+            return $this->messagehubRepository->getAllNotificationsChartData($request->notificationType, $startDate, $endDate, $employeeId, $employerId, $request->filterTemplate, isset($request->search_message)?$request->search_message:'');
         } catch (Exception $e) {
             Log::error($e->getMessage());
         }
@@ -76,26 +76,26 @@ class MessagehubManager
     public function prepareReportData($request)
     {
         if(!empty($request->daterange)){
-                list($startDate,$endDate) = explode('-',$request->daterange);
-                $startDate = date('Y-m-d',strtotime(trim($startDate)));
-                $endDate = date('Y-m-d',strtotime(trim($endDate)));
-            }
-            $startDate = $endDate = '';
-            $employeeId = base64_decode($request->employee_id);
-            $employerId = $request->employer_id;
-            $brokerId = $request->broker_id;
+            list($startDate,$endDate) = explode('-',$request->daterange);
+            $startDate = date('Y-m-d',strtotime(trim($startDate)));
+            $endDate = date('Y-m-d',strtotime(trim($endDate)));
+        }
+        $startDate = $endDate = '';
+        $employeeId = base64_decode($request->employee_id);
+        $employerId = $request->employer_id;
+        $brokerId = $request->broker_id;
 
-            if(!empty($employerId)){
-                $employerId = [base64_decode($employerId)];
+        if(!empty($employerId)){
+            $employerId = [base64_decode($employerId)];
+        }else{
+            if(!empty($brokerId)){
+                $employerId = array_column($this->messagehubRepository->getEmployerList(base64_decode($brokerId)), 'id');
             }else{
-                if(!empty($brokerId)){
-                    $employerId = array_column($this->messagehubRepository->getEmployerList(base64_decode($brokerId)), 'id');
-                }else{
-                    $employerId = $this->messagehubRepository->getEmployersFilter(Session::get('role'), auth()->user()->id);
-                }
+                $employerId = $this->messagehubRepository->getEmployersFilter(Session::get('role'), auth()->user()->id);
             }
+        }
 
-            return [ 'startDate' => $startDate, 'endDate' => $endDate, 'employeeId' => $employeeId, 'employerId' => $employerId, 'brokerId' => $brokerId];
+        return [ 'startDate' => $startDate, 'endDate' => $endDate, 'employeeId' => $employeeId, 'employerId' => $employerId, 'brokerId' => $brokerId];
     }
 
     /**
