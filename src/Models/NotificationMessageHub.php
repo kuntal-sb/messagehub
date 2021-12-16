@@ -54,11 +54,23 @@ class NotificationMessageHub extends Model
     }
 
     /**
+     * Get the Email Logs
+     */
+    public function emailNotifications()
+    {
+        return $this->hasMany(NotificationMessageHubEmailLog::class,'message_id','id');
+    }
+
+    /**
      * Insert Record into Notification table
      * @return Return Id of inseted record
      */
     public function insertNotificationData($type, $transactionId, $requestData, $thumbnailPath='')
     {
+        if($requestData['notification_type'] == 'email'){
+            $requestData['message'] = $requestData['email_body'];
+            $requestData['title'] = $requestData['email_subject'];
+        }
         $message_details = array(
                     'created_by'    => !empty($requestData['created_by'])?$requestData['created_by']:auth()->user()->id,
                     'created_as'    => !empty($requestData['created_as'])?$requestData['created_as']:getEmployerId(),

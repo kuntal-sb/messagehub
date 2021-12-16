@@ -7,6 +7,7 @@ use Strivebenifits\Messagehub\Models\NotificationMessageHub;
 use Strivebenifits\Messagehub\Models\NotificationMessageHubPushLog;
 use Strivebenifits\Messagehub\Models\NotificationInvoice;
 use Strivebenifits\Messagehub\Models\NotificationMessageHubTextLog;
+use Strivebenifits\Messagehub\Models\NotificationMessageHubEmailLog;
 use App\Models\User;
 use App\Models\EmployeeDemographic;
 use Strivebenifits\Messagehub\Models\MongoDb\NotificationSchedule;
@@ -27,6 +28,8 @@ use Session;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Repositories\FilterTemplateBlocksRepository;
 use App\Http\Repositories\FilterTemplateDynamicFieldsRepository;
+use App\Mail\NotificationEmail;
+use Mail;
 
 /**
  * Class MessagehubRepository
@@ -86,8 +89,11 @@ class MessagehubRepository extends BaseRepository
     public function setNotificationData($data){
         $this->notificationData = $data;
 
-        $this->notificationData['message'] = $this->model->parseMessage($this->notificationData['message']);
+        $this->notificationData['message'] = !empty($this->notificationData['message'])?$this->model->parseMessage($this->notificationData['message']):'';
         $this->notificationData['title'] = !empty($this->notificationData['title'])?$this->notificationData['title']:'';
+        $this->notificationData['email_subject'] = !empty($this->notificationData['email_subject'])?$this->notificationData['email_subject']:'';
+        $this->notificationData['email_template'] = !empty($this->notificationData['email_template'])?$this->notificationData['email_template']:'';
+        $this->notificationData['email_body'] = !empty($this->notificationData['email_body'])?$this->notificationData['email_body']:'';
     }
 
     /**
@@ -145,9 +151,14 @@ class MessagehubRepository extends BaseRepository
                             $q->whereIn('employer_id', $employers);
                         }
                     });
+            $query->orWhereHas('emailNotifications', function (Builder $q) use ($employers){
+                        if(!empty($employers)){
+                            $q->whereIn('employer_id', $employers);
+                        }
+                    });
         });
 
-        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.notification_type','notifications_message_hub.created_at'])->orderBy('created_at', 'desc');
+        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at'])->orderBy('created_at', 'desc');
         return $notifications;
     }
 
@@ -160,7 +171,7 @@ class MessagehubRepository extends BaseRepository
     {
         $notifications = DB::table('notifications_message_hub AS x')
                             ->whereNull('x.deleted_at')
-                            ->select(['x.id','x.message','x.notification_type','x.filter_value']);
+                            ->select(['x.id','x.message','x.title','x.notification_type','x.filter_value']);
 
         if($type == 'in-app'){
             $notifications->join('notifications_message_hub_push_log','notifications_message_hub_push_log.message_id','=','x.id');
@@ -186,7 +197,7 @@ class MessagehubRepository extends BaseRepository
             $query1->union($query2);
 
             $notifications = DB::table(DB::raw("({$query1->toSql()}) as x"))
-                                ->select(['x.message', 'x.notification_type', 'x.employee_id','x.employer_id', 'x.status', 'x.created_at', 'x.filter_value']);
+                                ->select(['x.message','x.title', 'x.notification_type', 'x.employee_id','x.employer_id', 'x.status', 'x.created_at', 'x.filter_value']);
         }
 
         if(!empty($startDate) && !empty($endDate)){
@@ -413,6 +424,60 @@ class MessagehubRepository extends BaseRepository
         }
     }
 
+
+    /**
+     * Get All employee data for each employer and then passe it to send into job
+     * @param Array request
+     * @param Array employerIds
+     * @return Schedule Email
+     */
+    public function processEmailNotifications($employerIds)
+    {
+        try {
+            foreach ($employerIds as $key => $employerId) {
+                $employees = $this->getEmployeeBySentType($employerId);
+
+                $this->dispatchEmailNotification($employees, $employerId);
+            }
+
+            $message = 'Your users will receive the Email!';
+            $status_code = 200;
+        } catch (Exception $e) {
+            Log::error($e);
+            $status_code = 400;
+            $message = $e->getMessage();
+        }
+        return ['status_code' => $status_code, 'message' => $message];
+    }
+
+    /**
+     * Send Email notification to Queue for each employee
+     * @param
+     * @return
+     */
+    public function dispatchEmailNotification($employees,$employerId)
+    {
+        try {
+            $notificationMessageId = $this->addNotification($employerId);
+
+            foreach ($employees as $employee) {
+                $emailData = ['employee' => $employee,
+                            'employer_id' => $employerId,
+                            'email_subject' => $this->notificationData['email_subject'],
+                            'email_template' => $this->notificationData['email_template'],
+                            'email_body' => $this->notificationData['email_body'],
+                            'message_id' => $notificationMessageId];
+
+                NotificationMessageHubEmailLog::create(['employee_id' => $employee['id'], 'employer_id' => $employerId, 'message_id' => $notificationMessageId]);
+
+                $message = (new NotificationEmail($emailData))->onQueue('email_queue');
+                Mail::to($employee['email'])->queue($message);
+            }
+        } catch (Exception $e) {
+            Log::error($e);
+        }
+    }
+
     /**
      * Add Notification to Message hub Notification table and store message ids to array to not create duplicate entry for type "in-ap-text"
      * @param employerId
@@ -597,6 +662,10 @@ class MessagehubRepository extends BaseRepository
                 break;
             case config('messagehub.notification.type.INAPPTEXT'):
                     $prefix = 'PNTXT';
+                // code...
+                break;
+            case config('messagehub.notification.type.EMAIL'):
+                    $prefix = 'EML';
                 // code...
                 break;
             

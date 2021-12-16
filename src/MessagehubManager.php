@@ -142,6 +142,10 @@ class MessagehubManager
             Log::info('---Push Notification---');
             extract($this->messagehubRepository->processPushNotification($employerIds,$brokerId));
         }
+
+        if(in_array($notificationType, [config('messagehub.notification.type.EMAIL')])){
+            extract($this->messagehubRepository->processEmailNotifications($employerIds));
+        }
         return ['status_code' => $status_code, 'message' => $message];
     }
 
