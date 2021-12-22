@@ -721,6 +721,7 @@ class MessagehubRepository extends BaseRepository
                     $response = ['status_code'=>400,'message'=>'Unable to update schedule'];
                 }
             }else{
+                $data['status'] = 'Scheduled';
                 $notificationSchedule = NotificationSchedule::create($data);
 
                 if($notificationSchedule->id){
@@ -1221,7 +1222,6 @@ class MessagehubRepository extends BaseRepository
     public function getScheduledNotifications($role)
     {
         $employers = $this->getEmployersFilter($role, Auth::user()->id);
-
         $param = [];
         if(!empty($employers)){
             $param = [[
@@ -1231,10 +1231,12 @@ class MessagehubRepository extends BaseRepository
                         ]
                     ],
                     
-                ]];
+                ],[ '$sort'=> ["scheduled_utc_time"=> -1] ]];
+        }else{
+            $param = [[ '$sort'=> ["scheduled_utc_time"=> -1] ]];
         }
 
-        return  NotificationSchedule::raw(function($collection) use ($param)
+        return NotificationSchedule::raw(function($collection) use ($param)
         {
             return $collection->aggregate(
                 $param

@@ -475,7 +475,9 @@ class MessagehubManager
             }
 
             //Remove record from scheduled list
-            $notifications->delete();
+            //$notifications->delete();
+            $notifications->status = 'Completed';
+            $notifications->save();
             //ActivityLog::getInstance()->createLog($activityMessage);
             Log::info('Launch was scheduled and deleted successfully');
         } catch (Exception $e) {
