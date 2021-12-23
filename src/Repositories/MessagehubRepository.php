@@ -28,6 +28,7 @@ use Session;
 use Illuminate\Database\Eloquent\Builder;
 use App\Http\Repositories\FilterTemplateBlocksRepository;
 use App\Http\Repositories\FilterTemplateDynamicFieldsRepository;
+use App\Http\Repositories\UsersRepository;
 use App\Mail\NotificationEmail;
 use Mail;
 
@@ -431,15 +432,32 @@ class MessagehubRepository extends BaseRepository
      * @param Array employerIds
      * @return Schedule Email
      */
-    public function processEmailNotifications($employerIds)
+    public function processEmailNotifications($employerList)
     {
         try {
-            foreach ($employerIds as $key => $employerId) {
-                $employees = $this->getEmployeeBySentType($employerId);
+            $filterTemplate = '';
 
-                $this->dispatchEmailNotification($employees, $employerId);
+            if($this->notificationData['send_to'] == 'send_to_all'){
+                $employeeList = [];
+            }
+            else if($this->notificationData['send_to'] == 'send_to_filter_list'){
+                $employeeList = [];
+
+                $filterTemplate = $this->notificationData['filterTemplate'];
+            }else{
+                $userRepository = app()->make(UsersRepository::class);
+                $employees = $employeeList = $userRepository->getByWhereIn($this->notificationData['employees'], 'id', [], ['id','email']);
             }
 
+            foreach($employerList as $employerId){
+                if(empty($employeeList)){
+                    $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate);
+                }
+
+                if(!empty($employees)){
+                    $this->dispatchEmailNotification($employees, $employerId);
+                }
+            }
             $message = 'Your users will receive the Email!';
             $status_code = 200;
         } catch (Exception $e) {
@@ -498,7 +516,7 @@ class MessagehubRepository extends BaseRepository
         if($this->notificationData['send_to'] == 'send_to_all'){
             return $this->getEmployeeList($this->notificationType, $employerId);
         }
-        else if($this->notificationData['send_to'] == 'send_to_filter_list'){
+        else if(in_array($this->notificationData['send_to'], ['send_to_filter_list'])){
             return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate']);
         }else{
             return $this->getPhoneNumberByUser($this->notificationData['employees']);
