@@ -44,6 +44,20 @@ class MessagehubManager
     }
 
     /**
+     * getAllNotificationsByMessageIds.
+     * @param $notificationids
+     * @return  json data
+     */
+    public function getAllNotificationsByMessageIds($notificationIds)
+    {
+        try {
+            return $this->messagehubRepository->getAllNotificationsByMessageIds($notificationIds);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+        }
+    }
+
+    /**
      * getAllNotificationsDetails.
      * @param $request
      * @return  json data

@@ -164,6 +164,21 @@ class MessagehubRepository extends BaseRepository
     }
 
     /**
+     * getAllNotificationsByMessageIds.
+     * @param 
+     * @return  Query Collection
+     */
+    public function getAllNotificationsByMessageIds($messageIds)
+    {
+        $notifications = $this->model;
+
+        $notifications = $notifications->whereIn('notifications_message_hub.id', $messageIds);
+
+        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at'])->orderBy('created_at', 'desc');
+        return $notifications;
+    }
+
+    /**
      * getAllNotificationsDetails.
      * @param 
      * @return  Query Collection
