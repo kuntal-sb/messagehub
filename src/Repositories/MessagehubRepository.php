@@ -609,13 +609,17 @@ class MessagehubRepository extends BaseRepository
             // Setup Notificaition title and body
             $notification -> setNotification($data['title'], $data['message']);
             // Build FCM request payload
-            if($data['device_type'] !== 'appNameIOS'){
+            //if($data['device_type'] !== 'appNameIOS'){
                 $fcmData = new Data();
-                $fcmData->setPayload(array('data' => ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId,  'msg_type' => "new"]));
+                $fcmData->setPayload(array(
+                    'data' => ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId,  'msg_type' => "new"],
+                    'apns'=>['payload' => ['aps'=>['badge'=>$unreadCount,'contentAvailable' => true]]]
+                ));
                 $client -> build($recipient, $notification, $fcmData);
-            }else{
-                $client -> build($recipient, $notification);
-            }
+
+            // }else{
+            //     $client -> build($recipient, $notification);
+            // }
             $result = $client -> fire();
             $is_success = $result ===true?1:0;
             $message = $result;
