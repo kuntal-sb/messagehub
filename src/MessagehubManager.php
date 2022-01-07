@@ -503,8 +503,22 @@ class MessagehubManager
 
             //Remove record from scheduled list
             //$notifications->delete();
-            $notifications->status = 'Completed';
-            $notifications->save();
+            
+            if($notifications->recurrence == 'does_not_repeat'){
+                $notifications->status = 'Completed';
+                $notifications->save();
+            }else{
+                $notifications->next_at = $next_at = nextEventOccurance($notifications->toArray(), $eventData['schedule_datetime']);
+                $notifications->next_scheduled_utc_time = convertToUtc($notifications->timezone, $next_at);
+
+                if(strtotime($next_at) > strtotime($notifications->schedule_end_datetime)){
+                    $notifications->status = 'Completed';
+                }else{
+                    $notifications->status = 'Scheduled';
+                }
+                $notifications->save();
+            }
+
             //ActivityLog::getInstance()->createLog($activityMessage);
             Log::info('Launch was scheduled and deleted successfully');
         } catch (Exception $e) {

@@ -766,6 +766,8 @@ class MessagehubRepository extends BaseRepository
 
             unset($data['brokers']);
 
+            $this->prepareRecurringEventData($data);
+
             if(!empty($this->notificationData['schedule_id'])){
                 $notificationSchedule = NotificationSchedule::where('_id',$this->notificationData['schedule_id'])->update($data);
                 if($notificationSchedule->id == 200){
@@ -788,6 +790,62 @@ class MessagehubRepository extends BaseRepository
             $response = ['status_code'=>400,'message'=> $e->getMessage()];
         }
         return $response;
+    }
+
+    /*
+     * prepareRecurringEventData
+     * @return set next event date and recurring data
+     */
+    public function prepareRecurringEventData(&$eventData)
+    {
+        $eventData['recurrence'] = $eventData['is_repeated'];
+        $eventData['repeat_interval'] = $eventData['repeat_interval'];
+
+        switch ($eventData['is_repeated']) {
+            case 'every_weekday':
+            case 'daily':
+            case 'weekly':
+            case 'monthly':
+            case 'yearly':
+                $eventData['is_custom'] = false;
+                break;
+            case 'custom':
+                $eventData['is_custom'] = true;
+                if($eventData['custom_repeat_type'] == 'day'){
+                    $eventData['recurrence'] = 'daily';
+                }
+                elseif($eventData['custom_repeat_type'] == 'week'){
+                    $eventData['recurrence'] = 'weekly';
+                    $eventData['on_specific_days_of_month'] = $eventData['custom_days_of_week'];    
+                }
+                else if($eventData['custom_repeat_type'] == 'month'){
+                    $eventData['recurrence'] = 'monthly';
+                    if($eventData['custom_recurrence_type'] == 'on_day'){
+                        $eventData['on_specific_day'] = $eventData['custom_on_day_txt'];
+                    }else{
+                        $eventData['on_specific_sequence'] = $eventData['custom_on_specific_sequence'];
+                        $eventData['on_specific_days_of_month'] = $eventData['custom_on_specific_days_of_month'];
+                    }    
+                }
+                else if($eventData['custom_repeat_type'] == 'year'){
+                    $eventData['recurrence'] = 'yearly';
+                    if($eventData['custom_recurrence_type'] == 'on_day'){
+                        $eventData['on_specific_day'] = $eventData['custom_on_day_txt'];
+                        $eventData['on_specific_month'] = $eventData['custom_on_day_month'];
+                    }else{
+                        $eventData['on_specific_sequence'] = $eventData['custom_on_specific_sequence'];
+                        $eventData['on_specific_days_of_month'] = $eventData['custom_on_specific_days_of_month'];
+                        $eventData['on_specific_month'] = $eventData['custom_on_the_specific_month'];
+                    }                    
+                }
+                break;
+            default:
+                // code...
+                break;
+        }
+
+        $eventData['next_at'] = nextEventOccurance($eventData, $eventData['schedule_datetime']);
+        $eventData['next_scheduled_utc_time'] = convertToUtc($this->notificationData['timezone'], $eventData['next_at']);
     }
 
     public function unreadNotificationMessages($user_id, $timestamp) {
