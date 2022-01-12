@@ -360,6 +360,7 @@ class MessagehubRepository extends BaseRepository
                 $employeeId  = $employee['id'];
                 $deviceToken = $employee['device_id'];
                 $deviceType  = $employee['device_type'];
+                $is_flutter  = $employee['is_flutter'];
             }else{
                 $employeeId = $employee;
                 $device_details = $this->getDevicebyEmployee($employeeId);
@@ -369,6 +370,7 @@ class MessagehubRepository extends BaseRepository
                 }
                 $deviceToken = $device_details->device_id;
                 $deviceType  = $device_details->device_type;
+                $is_flutter  = $device_details->is_flutter;
             }
 
             //This condition will handle sending multiple push if different users logged in same device.
@@ -379,7 +381,7 @@ class MessagehubRepository extends BaseRepository
 
                 $notificationMessageId = $this->addNotification($employerId);
 
-                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $this->notificationData['message'],'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $this->notificationData['title'],'app_store_target' => $appStoreTarget );
+                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $this->notificationData['message'],'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $this->notificationData['title'],'app_store_target' => $appStoreTarget, 'is_flutter' => $is_flutter );
 
                 $seconds=0+($this->increment*2);
                 sendNotifications::dispatch($send_data)->delay($seconds);
@@ -654,7 +656,7 @@ class MessagehubRepository extends BaseRepository
     public function getDevicebyEmployee($employeeId)
     {
         return DB::table('employee_device_mapping')
-                        ->select('device_id','device_type')
+                        ->select('device_id','device_type','is_flutter')
                         ->where('employee_id','=',$employeeId)
                         ->whereNotNull('device_type')
                         ->where('device_type','!=','')
@@ -1120,7 +1122,7 @@ class MessagehubRepository extends BaseRepository
             //Get only those users who has downloaded app
             $query->when(in_array($type,[config('messagehub.notification.type.INAPP')]), function ($q) {
                 return $q->getActiveAppUser()
-                                ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type');
+                                ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type','employee_device_mapping.is_flutter');
             });
 
             //Get only those users with mobile number
@@ -1135,9 +1137,9 @@ class MessagehubRepository extends BaseRepository
 
             if($type == config('messagehub.notification.type.INAPPTEXT')){
                 $query1 = clone $query;
-                $query = $query->getUserByMobile()->condHasMobile()->addSelect('employee_demographics.phone_number', DB::raw('null as device_id'), DB::raw('null as device_type'))->get();
+                $query = $query->getUserByMobile()->condHasMobile()->addSelect('employee_demographics.phone_number', DB::raw('null as device_id'), DB::raw('null as device_type'), DB::raw('null as is_flutter'))->get();
                 $query1 = $query1->getActiveAppUser()
-                                ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type', DB::raw('"" as phone_number'))->get();
+                                ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type','employee_device_mapping.is_flutter', DB::raw('"" as phone_number'))->get();
                 $employeeData = array_merge($employeeData, $query1->merge($query)->toArray());
             }else{
                 $employeeData = array_merge($employeeData, $query->get()->toArray());

@@ -248,32 +248,41 @@ class MessagehubManager
             
             $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
 
-            //If the device is ios, first hit APNS.
-            if($data['device_type'] === 'appNameIOS'){
-                try{
-                    Log::info('--inside apn--');
-                    $url = env('APNS_URL').$data['device_token'];
-
-                    $iosPayload = array('badge' => $unreadCount,'custom' => array('customData' => array('notification_id' => $logID)));
-                    $app_store_target = $data['app_store_target'];
-                    extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$logID,$pushMessage,$data['ios_certificate_file']));
-
-                    $is_success = $status==200?1:0;
-                    $exception_message = $message;
-                }
-                catch(Exception $e){
-                    Log::error(' apn error'.$e->getMessage());
-                    //If exception occurred, then hit FCM for the old live apps.
-                    $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
-                    Log::info('--ios fcm push--'.json_encode($fcmPush));
-                    $is_success = $fcmPush['is_success'];
-                    $exception_message = $fcmPush['exception_message'];
-                }
-            }else{//For android hit fcm push notification
+            //If the user is from flutter app
+            if($data['is_flutter'] == 1){
                 $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
                 Log::info(json_encode($fcmPush));
                 $is_success = $fcmPush['is_success'];
                 $exception_message = $fcmPush['exception_message'];
+            }else{
+                //Old Logic
+                //If the device is ios, first hit APNS.
+                if($data['device_type'] === 'appNameIOS'){
+                    try{
+                        Log::info('--inside apn--');
+                        $url = env('APNS_URL').$data['device_token'];
+
+                        $iosPayload = array('badge' => $unreadCount,'custom' => array('customData' => array('notification_id' => $logID)));
+                        $app_store_target = $data['app_store_target'];
+                        extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$logID,$pushMessage,$data['ios_certificate_file']));
+
+                        $is_success = $status==200?1:0;
+                        $exception_message = $message;
+                    }
+                    catch(Exception $e){
+                        Log::error(' apn error'.$e->getMessage());
+                        //If exception occurred, then hit FCM for the old live apps.
+                        $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
+                        Log::info('--ios fcm push--'.json_encode($fcmPush));
+                        $is_success = $fcmPush['is_success'];
+                        $exception_message = $fcmPush['exception_message'];
+                    }
+                }else{//For android hit fcm push notification
+                    $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
+                    Log::info(json_encode($fcmPush));
+                    $is_success = $fcmPush['is_success'];
+                    $exception_message = $fcmPush['exception_message'];
+                }
             }
             
             $update_log_data = array(
