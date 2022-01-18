@@ -31,6 +31,7 @@ use App\Http\Repositories\FilterTemplateDynamicFieldsRepository;
 use App\Http\Repositories\UsersRepository;
 use App\Mail\NotificationEmail;
 use Mail;
+use App\Http\Managers\TemplateManager;
 
 /**
  * Class MessagehubRepository
@@ -61,14 +62,23 @@ class MessagehubRepository extends BaseRepository
     private $notificationIds = [];
 
     /**
+     * @var TemplateManager
+     */
+    private TemplateManager $templateManager;
+
+    /**
      * MessagehubRepository constructor.
      * @param NotificationMessageHub $notificationMessage
      * @param Connection $eloquentORM
+     * @param TemplateManager $templateManager
      */
-    public function __construct(NotificationMessageHub $notificationMessage, Connection $eloquentORM)
+    public function __construct(NotificationMessageHub $notificationMessage, 
+        Connection $eloquentORM,
+        TemplateManager $templateManager)
     {
         parent::__construct($eloquentORM);
         $this->model = $notificationMessage;
+        $this->templateManager = $templateManager;
     }
 
     public function setSmsEnabled($value){
@@ -494,6 +504,10 @@ class MessagehubRepository extends BaseRepository
     {
         try {
             $notificationMessageId = $this->addNotification($employerId);
+
+            if(method_exists($this->templateManager,'mapEmailTemplateKeywords')){
+                $this->notificationData['email_body'] = $this->templateManager->mapEmailTemplateKeywords($this->notificationData['email_body'], $employerId);
+            }
 
             foreach ($employees as $employee) {
                 $emailData = ['employee' => $employee,
