@@ -848,6 +848,9 @@ class MessagehubRepository extends BaseRepository
             $eventData['next_at'] = nextEventOccurance($eventData, $eventData['schedule_datetime']);
             $eventData['next_scheduled_utc_time'] = convertToUtc($this->notificationData['timezone'], $eventData['next_at']);
         }
+        else{
+            unset($eventData['schedule_end_datetime']);
+        }
     }
 
     public function unreadNotificationMessages($user_id, $timestamp) {
