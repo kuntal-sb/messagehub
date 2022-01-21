@@ -199,7 +199,7 @@ class MessagehubManager
             }
             if( $v->passes() ) {
                 $name = $input->getClientOriginalName();
-                $filePath = 'carriers/' . time().preg_replace('/[^A-Za-z0-9\-\]/', '', $name);
+                $filePath = 'carriers/' . time().preg_replace('/[^A-Za-z0-9\-]/', '',$name);
                 $s3Service = new S3Service;
                 $response = $s3Service->uploadFile($filePath, 's3', $input);
                 if($response['status_code'] == 200){
