@@ -514,6 +514,7 @@ class MessagehubManager
                 if(strtotime($next_at) > strtotime($notifications->schedule_end_datetime)){
                     $notifications->status = 'Completed';
                 }else{
+                    //change status back to scheduled for next recurring event
                     $notifications->status = 'Scheduled';
                 }
                 $notifications->save();
