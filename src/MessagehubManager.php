@@ -10,7 +10,6 @@ use App\Http\Services\S3Service;
 use Carbon\Carbon;
 use Session;
 use App\Jobs\SendLogToElastic;
-use Illuminate\Support\Str;
 
 class MessagehubManager
 {
@@ -200,7 +199,7 @@ class MessagehubManager
             }
             if( $v->passes() ) {
                 $name = $input->getClientOriginalName();
-                $filePath = 'carriers/' . time().Str::slug($name);
+                $filePath = 'carriers/' . time().preg_replace('/[^A-Za-z0-9\-\]/', '', $name);
                 $s3Service = new S3Service;
                 $response = $s3Service->uploadFile($filePath, 's3', $input);
                 if($response['status_code'] == 200){
