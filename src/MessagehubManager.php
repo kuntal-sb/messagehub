@@ -490,6 +490,10 @@ class MessagehubManager
             $this->setNotificationData($notifications->toArray());
             $this->generateTransactionId();
            
+            if (isset($notifications->thumbnail)) {
+                $this->messagehubRepository->setThumbnailPath($notifications->thumbnail);
+            }
+
             if($notifications->sent_type == 'choose-app' && !empty($notifications->apps)){// If schedule by admin app wise
                 $this->processNotificationsByApp($notifications->apps);
             }else{
