@@ -844,8 +844,10 @@ class MessagehubRepository extends BaseRepository
                 break;
         }
 
-        $eventData['next_at'] = nextEventOccurance($eventData, $eventData['schedule_datetime']);
-        $eventData['next_scheduled_utc_time'] = convertToUtc($this->notificationData['timezone'], $eventData['next_at']);
+        if($eventData['is_repeated'] != 'does_not_repeat'){
+            $eventData['next_at'] = nextEventOccurance($eventData, $eventData['schedule_datetime']);
+            $eventData['next_scheduled_utc_time'] = convertToUtc($this->notificationData['timezone'], $eventData['next_at']);
+        }
     }
 
     public function unreadNotificationMessages($user_id, $timestamp) {
