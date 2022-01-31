@@ -508,7 +508,7 @@ class MessagehubManager
                 $notifications->status = 'Completed';
                 $notifications->save();
             }else{
-                $notifications->next_at = $next_at = nextEventOccurance($notifications->toArray(), $eventData['schedule_datetime']);
+                $notifications->next_at = $next_at = nextEventOccurance($notifications->toArray(), $notifications->scheduled_utc_time);
                 $notifications->next_scheduled_utc_time = convertToUtc($notifications->timezone, $next_at);
 
                 if(strtotime($next_at) > strtotime($notifications->schedule_end_datetime)){
