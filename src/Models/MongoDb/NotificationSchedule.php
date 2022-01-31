@@ -21,4 +21,13 @@ class NotificationSchedule extends Model
             return Carbon::createFromFormat('Y-m-d h:i A',$this->schedule_date . " " . $this->schedule_time)->setTimezone(getEmployerTimezone())->toDayDateTimeString();
         }
     }
+
+    public function getScheduledEndDateTimeAttribute()
+    {
+        if(isset($this->schedule_end_datetime)){
+            return Carbon::createFromFormat('m/d/Y h:i A',$this->schedule_end_datetime)->toDayDateTimeString();
+        }else{
+            return '';
+        }
+    }
 }
