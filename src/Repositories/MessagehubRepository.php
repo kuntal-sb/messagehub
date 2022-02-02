@@ -390,7 +390,7 @@ class MessagehubRepository extends BaseRepository
 
                 $deviceType = $this->getDeviceType($deviceType);
 
-                $notificationMessageId = $this->addNotification($employerId);
+                $notificationMessageId = $this->addNotification($employerId, true);
 
                 $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $this->notificationData['message'],'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $this->notificationData['title'],'app_store_target' => $appStoreTarget, 'is_flutter' => $is_flutter );
 
@@ -533,13 +533,15 @@ class MessagehubRepository extends BaseRepository
      * @param employerId
      * @return MessageId
      */
-    public function addNotification($employerId)
+    public function addNotification($employerId, $mapping = false)
     {
         if(!isset($this->notificationIds[$this->notificationType]['messageId'][$employerId])){
             $notificationMessageId = $this->model->insertNotificationData($this->notificationType, $this->transactionId, $this->notificationData, $this->thumbnailPath);
             $this->notificationIds[$this->notificationType]['messageId'][$employerId] = $notificationMessageId;
 
-            $this->addMessageMappingData($notificationMessageId);
+            if($mapping){
+                $this->addMessageMappingData($notificationMessageId);
+            }
         }
 
         return $this->notificationIds[$this->notificationType]['messageId'][$employerId];
