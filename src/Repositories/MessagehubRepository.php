@@ -10,6 +10,7 @@ use Strivebenifits\Messagehub\Models\NotificationMessageHubTextLog;
 use Strivebenifits\Messagehub\Models\NotificationMessageHubEmailLog;
 use App\Models\User;
 use App\Models\EmployeeDemographic;
+use App\Models\MessageMapping;
 use Strivebenifits\Messagehub\Models\MongoDb\NotificationSchedule;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
@@ -537,10 +538,25 @@ class MessagehubRepository extends BaseRepository
         if(!isset($this->notificationIds[$this->notificationType]['messageId'][$employerId])){
             $notificationMessageId = $this->model->insertNotificationData($this->notificationType, $this->transactionId, $this->notificationData, $this->thumbnailPath);
             $this->notificationIds[$this->notificationType]['messageId'][$employerId] = $notificationMessageId;
+
+            $this->addMessageMappingData($notificationMessageId);
         }
+
         return $this->notificationIds[$this->notificationType]['messageId'][$employerId];
     }
 
+    /**
+     * Add notification if to mapping table
+     * @param $notificationMessageId
+     * @return MessageId
+     */
+    public function addMessageMappingData($notificationMessageId)
+    {
+        $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
+        $mappedId = MessageMapping::create($mappingDetails);
+
+        $this->model::where(['id' => $notificationMessageId])->update(['mapped_id' => $mappedId]);
+    }
 
     public function getEmployeeBySentType($employerId = '')
     {

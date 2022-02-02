@@ -30,6 +30,7 @@ class NotificationMessageHub extends Model
         'valid_from',
         'expiry_date',
         'notification_type',
+        'mapped_id',
         'created_at',
         'updated_at',
         'deleted_at'
