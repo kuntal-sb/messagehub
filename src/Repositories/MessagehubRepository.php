@@ -555,7 +555,7 @@ class MessagehubRepository extends BaseRepository
     public function addMessageMappingData($notificationMessageId)
     {
         $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
-        $mappedId = MessageMapping::create($mappingDetails);
+        $mappedId = MessageMapping::insertGetId($mappingDetails);
 
         $this->model::where(['id' => $notificationMessageId])->update(['mapped_id' => $mappedId]);
     }
