@@ -510,8 +510,11 @@ class MessagehubManager
                 $notifications->status = 'Completed';
                 $notifications->save();
             }else{
-                $notifications->next_at = $next_at = nextEventOccurance($notifications->toArray(), $notifications->scheduled_utc_time);
-                $notifications->next_scheduled_utc_time = convertToUtc($notifications->timezone, $next_at);
+            $next_at = nextEventOccurance($notifications->toArray(), $notifications->next_scheduled_utc_time);
+                $notifications->next_scheduled_utc_time = date('Y-m-d H:i', strtotime($next_at));
+
+                //store into user timezone format
+                $notifications->next_at = dateToTimezone($notifications->timezone, $notifications->next_scheduled_utc_time, 'm/d/Y h:i A');
 
                 if(strtotime($next_at) > strtotime($notifications->schedule_end_datetime)){
                     $notifications->status = 'Completed';
