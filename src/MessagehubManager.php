@@ -146,15 +146,17 @@ class MessagehubManager
     public function processNotifications($employerIds, $brokerId = null)
     {
         $notificationType = $this->messagehubRepository->getNotificationType();
-        //TEXT Message
-        if(in_array($notificationType, [config('messagehub.notification.type.TEXT'), config('messagehub.notification.type.INAPPTEXT')])){
-            Log::info('---TXT Notification---');
-            extract($this->messagehubRepository->processTxtNotifications($employerIds));
-        }
+        // Do not change Order
         //Push Notification
         if(in_array($notificationType, [config('messagehub.notification.type.INAPP'), config('messagehub.notification.type.INAPPTEXT')])){
             Log::info('---Push Notification---');
             extract($this->messagehubRepository->processPushNotification($employerIds,$brokerId));
+        }
+
+        //TEXT Message
+        if(in_array($notificationType, [config('messagehub.notification.type.TEXT'), config('messagehub.notification.type.INAPPTEXT')])){
+            Log::info('---TXT Notification---');
+            extract($this->messagehubRepository->processTxtNotifications($employerIds));
         }
 
         if(in_array($notificationType, [config('messagehub.notification.type.EMAIL')])){
