@@ -251,7 +251,7 @@ class MessagehubManager
             $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
 
             //If the user is from flutter app
-            if($data['is_flutter'] == 1){
+            if(isset($data['is_flutter']) && $data['is_flutter'] == 1){
                 $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
                 Log::info(json_encode($fcmPush));
                 $is_success = $fcmPush['is_success'];

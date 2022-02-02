@@ -26,7 +26,7 @@ class NotificationMessageHubEmailLog extends Model
     */
     public function employee()
     {
-        return $this->belongsTo(\App\Models\User::class,'employee_id','id');
+        return $this->belongsTo(\App\Models\User::class,'employee_id','id')->select('users.id','users.company_name','users.username','users.first_name','users.last_name','users.email');
     }
 
     /*
