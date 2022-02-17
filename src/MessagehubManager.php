@@ -266,7 +266,7 @@ class MessagehubManager
 
                         $iosPayload = array('badge' => $unreadCount,'custom' => array('customData' => array('notification_id' => $logID)));
                         $app_store_target = $data['app_store_target'];
-                        extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$logID,$pushMessage,$data['ios_certificate_file']));
+                        extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$logID,$pushMessage,$data['ios_certificate_file'], $data));
 
                         $is_success = $status==200?1:0;
                         $exception_message = $message;

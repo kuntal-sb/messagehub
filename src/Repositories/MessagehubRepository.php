@@ -106,6 +106,7 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['email_subject'] = !empty($this->notificationData['email_subject'])?$this->notificationData['email_subject']:'';
         $this->notificationData['email_template'] = !empty($this->notificationData['email_template'])?$this->notificationData['email_template']:'';
         $this->notificationData['email_body'] = !empty($this->notificationData['email_body'])?$this->notificationData['email_body']:'';
+        $this->notificationData['target_screen'] = !empty($this->notificationData['target_screen'])?$this->notificationData['target_screen']:'';
     }
 
     /**
@@ -392,7 +393,7 @@ class MessagehubRepository extends BaseRepository
 
                 $notificationMessageId = $this->addNotification($employerId, true);
 
-                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $this->notificationData['message'],'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $this->notificationData['title'],'app_store_target' => $appStoreTarget, 'is_flutter' => $is_flutter );
+                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $this->notificationData['message'],'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $this->notificationData['title'],'app_store_target' => $appStoreTarget, 'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'] );
 
                 $seconds=0+($this->increment*2);
                 sendNotifications::dispatch($send_data)->delay($seconds);
@@ -577,7 +578,7 @@ class MessagehubRepository extends BaseRepository
      * @param 
      * @return array with status
      */
-    public function sendApns($url, $app_store_target, $badgeCount, $notificationId, $pushMessage, $cert)
+    public function sendApns($url, $app_store_target, $badgeCount, $notificationId, $pushMessage, $cert, $data)
     {
         try{
             Log::info($cert);
@@ -587,7 +588,7 @@ class MessagehubRepository extends BaseRepository
             );
             $http2ch = curl_init();
             curl_setopt($http2ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new"}}';
+            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new", "target_screen" => '.$data['target_screen'].'}}';
 
             Log::info('Apn Message: '.$message);
 
@@ -646,7 +647,7 @@ class MessagehubRepository extends BaseRepository
             //if($data['device_type'] !== 'appNameIOS'){
                 $fcmData = new Data();
                 $fcmData->setPayload(array(
-                    'data' => ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId,  'msg_type' => "new"],
+                    'data' => ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId,  'msg_type' => "new",  'target_screen' => $data['target_screen']],
                     'apns'=>['payload' => ['aps'=>['badge'=>$unreadCount,'contentAvailable' => true]]]
                 ));
                 $client -> build($recipient, $notification, $fcmData);
