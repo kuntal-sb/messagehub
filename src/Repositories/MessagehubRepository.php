@@ -1,4 +1,4 @@
-<?php
+                                        <?php
 
 namespace Strivebenifits\Messagehub\Repositories;
 
@@ -34,6 +34,8 @@ use App\Mail\NotificationEmail;
 use Mail;
 use App\Http\Managers\TemplateManager;
 
+use App\Http\Repositories\MappedHashtagRepository;
+
 /**
  * Class MessagehubRepository
  * @package App\Http\Repositories
@@ -67,6 +69,8 @@ class MessagehubRepository extends BaseRepository
      */
     private TemplateManager $templateManager;
 
+    private $mappedHashtagRepository;
+
     /**
      * MessagehubRepository constructor.
      * @param NotificationMessageHub $notificationMessage
@@ -75,11 +79,13 @@ class MessagehubRepository extends BaseRepository
      */
     public function __construct(NotificationMessageHub $notificationMessage, 
         Connection $eloquentORM,
-        TemplateManager $templateManager)
+        TemplateManager $templateManager, 
+        MappedHashtagRepository $mappedHashtagRepository)
     {
         parent::__construct($eloquentORM);
         $this->model = $notificationMessage;
         $this->templateManager = $templateManager;
+        $this->mappedHashtagRepository = $mappedHashtagRepository;
     }
 
     public function setSmsEnabled($value){
@@ -557,6 +563,10 @@ class MessagehubRepository extends BaseRepository
         $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
         $mappedId = MessageMapping::insertGetId($mappingDetails);
 
+        //Extract hash tag and  save them
+        $hashTagArr = extractHashTag($this->notificationData['message']);
+        $this->mappedHashtagRepository->manageCommentHashtag($hashTagArr, $mappedId);
+
         $this->model::where(['id' => $notificationMessageId])->update(['mapped_id' => $mappedId]);
     }
 
@@ -577,7 +587,7 @@ class MessagehubRepository extends BaseRepository
      * @param 
      * @return array with status
      */
-    public function sendApns($url, $app_store_target, $badgeCount, $notificationId, $pushMessage, $cert)
+    public function sendApns($url, $app_store_target, $badgeCount, $notificationId, $pushMessage, $cert, $comment_type = '')
     {
         try{
             Log::info($cert);
@@ -587,8 +597,8 @@ class MessagehubRepository extends BaseRepository
             );
             $http2ch = curl_init();
             curl_setopt($http2ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new"}}';
-
+            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new","comment_type" : '.$comment_type.'}}';
+           
             Log::info('Apn Message: '.$message);
 
             if (!defined('CURL_HTTP_VERSION_2_0')) {
@@ -630,7 +640,7 @@ class MessagehubRepository extends BaseRepository
      * @param int notificationId
      * @return array with status
      */
-    public function fcmPush($data, $unreadCount, $notificationId)
+    public function fcmPush($data, $unreadCount, $notificationId, $comment_type = '')
     {
         try {
             $client = new Client($data['fcm_key']);
@@ -645,10 +655,14 @@ class MessagehubRepository extends BaseRepository
             // Build FCM request payload
             //if($data['device_type'] !== 'appNameIOS'){
                 $fcmData = new Data();
-                $fcmData->setPayload(array(
-                    'data' => ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId,  'msg_type' => "new"],
-                    'apns'=>['payload' => ['aps'=>['badge'=>$unreadCount,'contentAvailable' => true]]]
-                ));
+                
+                $fcmDataArr = [];
+                $fcmDataArr['data'] = ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId,  'msg_type' => "new"];
+                $fcmDataArr['apns'] = ['payload' => ['aps'=>['badge'=>$unreadCount,'contentAvailable' => true]]];
+                
+                $fcmDataArr['data']['comment_type'] = $comment_type;
+
+                $fcmData->setPayload($fcmDataArr);
                 $client -> build($recipient, $notification, $fcmData);
 
             // }else{

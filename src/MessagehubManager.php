@@ -240,7 +240,7 @@ class MessagehubManager
     public function sendOutNotifications($data)
     {
         try{
-            $pushMessage = htmlspecialchars(trim(strip_tags($data['message'])));
+            
             $message_id = $data['message_id'];
             Log::info('Message Data : '.json_encode($data));
             $fcm_key = $data['fcm_key'];
@@ -249,6 +249,23 @@ class MessagehubManager
             $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + $this->unreadOldNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + 1;
             
             $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
+
+            $this->sendNotification($data, $logID, $unreadCount);
+
+            
+        }catch(Exception $e){
+            Log::error($e);
+        }
+    }
+
+    /**
+     * sendOutNotifications to devices
+     * @param array $data, variable $logID $unreadCount
+     * @return 
+     */
+    public function sendNotification($data, $logID, $unreadCount, $comment_type = ''){
+
+        $pushMessage = htmlspecialchars(trim(strip_tags($data['message'])));
 
             //If the user is from flutter app
             if(isset($data['is_flutter']) && $data['is_flutter'] == 1){
@@ -266,7 +283,7 @@ class MessagehubManager
 
                         $iosPayload = array('badge' => $unreadCount,'custom' => array('customData' => array('notification_id' => $logID)));
                         $app_store_target = $data['app_store_target'];
-                        extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$logID,$pushMessage,$data['ios_certificate_file']));
+                    extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$logID,$pushMessage,$data['ios_certificate_file'], $comment_type));
 
                         $is_success = $status==200?1:0;
                         $exception_message = $message;
@@ -274,13 +291,13 @@ class MessagehubManager
                     catch(Exception $e){
                         Log::error(' apn error'.$e->getMessage());
                         //If exception occurred, then hit FCM for the old live apps.
-                        $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
+                    $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID,$comment_type);
                         Log::info('--ios fcm push--'.json_encode($fcmPush));
                         $is_success = $fcmPush['is_success'];
                         $exception_message = $fcmPush['exception_message'];
                     }
                 }else{//For android hit fcm push notification
-                    $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
+                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID,$comment_type);
                     Log::info(json_encode($fcmPush));
                     $is_success = $fcmPush['is_success'];
                     $exception_message = $fcmPush['exception_message'];
