@@ -385,19 +385,24 @@ class MessagehubRepository extends BaseRepository
                 $is_flutter  = $device_details->is_flutter;
             }
 
+            $notificationMessageId = $this->addNotification($employerId, true);
+
             //This condition will handle sending multiple push if different users logged in same device.
             if(!in_array($deviceToken, $this->duplicateDevices)){
                 $this->duplicateDevices[] = $deviceToken;
 
                 $deviceType = $this->getDeviceType($deviceType);
 
-                $notificationMessageId = $this->addNotification($employerId, true);
-
                 $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $this->notificationData['message'],'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $this->notificationData['title'],'app_store_target' => $appStoreTarget, 'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'] );
 
                 $seconds=0+($this->increment*2);
                 sendNotifications::dispatch($send_data)->delay($seconds);
                 $this->increment ++;
+            }else{//user has no device so make entry into notifications_message_hub_push_log with failed status
+                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'message' => (string) $this->notificationData['message'],'title' => $this->notificationData['title'],'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'],'exception_message'=>'App not Downloaded' );
+                $messageStatus = 'failed';
+
+                $logID = $this->insertNotificationLog($send_data, $notificationMessageId, $messageStatus);
             }
         } catch (Exception $e) {
             Log::error($e);   
@@ -921,17 +926,20 @@ class MessagehubRepository extends BaseRepository
         return $query;
     }
 
-    public function insertNotificationLog($data, $message_id)
+    public function insertNotificationLog($data, $messageId, $messageStatus = '')
     {
         $insert_data = array('employee_id' => $data['employee_id'],
                     'employer_id' => $data['employer_id'],
-                    'message_id'   => $message_id,
+                    'message_id'   => $messageId,
                     'read_status'  => 0,
                     'is_success'   => 0,
-                    'exception_message' => '',
+                    'exception_message' => isset($data['exception_message'])?$data['exception_message']:'',
                     'created_at'   => Carbon::now(), 
                     'updated_at'   => Carbon::now()
                     );
+        if(!empty($messageStatus)){
+            $insert_data['status'] = $messageStatus;
+        }
 
         $log = NotificationMessageHubPushLog::create($insert_data);
         return $log->id;
@@ -1217,8 +1225,9 @@ class MessagehubRepository extends BaseRepository
 
             //Get only those users who has downloaded app
             $query->when(in_array($type,[config('messagehub.notification.type.INAPP')]), function ($q) {
-                return $q->getActiveAppUser()
-                                ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type','employee_device_mapping.is_flutter');
+                /*return $q->getActiveAppUser()
+                                ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type','employee_device_mapping.is_flutter');*/
+                return $q->leftJoin('employee_device_mapping', 'employee_device_mapping.employee_id', '=', 'users.id')->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type','employee_device_mapping.is_flutter');
             });
 
             //Get only those users with mobile number
@@ -1234,8 +1243,7 @@ class MessagehubRepository extends BaseRepository
             if($type == config('messagehub.notification.type.INAPPTEXT')){
                 $query1 = clone $query;
                 $query = $query->getUserByMobile()->condHasMobile()->addSelect('employee_demographics.phone_number', DB::raw('null as device_id'), DB::raw('null as device_type'), DB::raw('null as is_flutter'))->get();
-                $query1 = $query1->getActiveAppUser()
-                                ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type','employee_device_mapping.is_flutter', DB::raw('"" as phone_number'))->get();
+                $query1 = $query1->leftJoin('employee_device_mapping', 'employee_device_mapping.employee_id', '=', 'users.id')->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type','employee_device_mapping.is_flutter', DB::raw('"" as phone_number'))->get();
                 $employeeData = array_merge($employeeData, $query1->merge($query)->toArray());
             }else{
                 $employeeData = array_merge($employeeData, $query->get()->toArray());
@@ -1273,7 +1281,7 @@ class MessagehubRepository extends BaseRepository
 
         //Get only those users who has downloaded app
         $query->when(in_array($type,[config('messagehub.notification.type.INAPP')]), function ($q) {
-            return $q->getActiveAppUser();
+            //return $q->getActiveAppUser();
         });
 
         //Get only those users with mobile number

@@ -76,7 +76,7 @@ class NotificationMessageHub extends Model
                     'created_by'    => !empty($requestData['created_by'])?$requestData['created_by']:auth()->user()->id,
                     'created_as'    => !empty($requestData['created_as'])?$requestData['created_as']:getEmployerId(),
                     'transaction_id'=> $transactionId,
-                    'message'       => $requestData['message'],
+                    'message'       => html_entity_decode($requestData['message']),
                     'title'         => !empty($requestData['title'])?$requestData['title']:'',
                     'summary'       => !empty($requestData['summary'])?$requestData['summary']:'',
                     'notification_type' => $type,
