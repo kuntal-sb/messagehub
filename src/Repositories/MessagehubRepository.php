@@ -603,7 +603,7 @@ class MessagehubRepository extends BaseRepository
             );
             $http2ch = curl_init();
             curl_setopt($http2ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new", "target_screen" => '.$data['target_screen'].',"comment_type" : '.$comment_type.'}}';
+            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new", "target_screen" : "'.$data['target_screen'].'","comment_type" : "'.$comment_type.'"}}';
 
             Log::info('Apn Message: '.$message);
 
