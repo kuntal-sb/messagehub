@@ -86,7 +86,9 @@ class NotificationMessageHub extends Model
                     'filter_value'  => $requestData['send_to'] == 'send_to_filter_list'?$requestData['filterTemplate']:'',
                     'valid_from'    => !empty($requestData['valid_from'])?date('Y-m-d',strtotime($requestData['valid_from'])):Carbon::now(),
                     'expiry_date'   => !empty($requestData['expiry_date'])?date('Y-m-d',strtotime($requestData['expiry_date'])):'',
-                    'created_at'    => Carbon::now(), 
+                    'target_screen'    => isset($requestData['target_screen'])?$requestData['target_screen']:'oehub',
+                    'target_screen_param'    => isset($requestData['target_screen_param'])?$requestData['target_screen']:'',
+                    'created_at'    => Carbon::now(),
                     'updated_at'    => Carbon::now()
                    );
         return $this->insertGetId($message_details);
