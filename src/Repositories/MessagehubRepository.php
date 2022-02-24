@@ -1489,4 +1489,33 @@ class MessagehubRepository extends BaseRepository
 
         return $this->getNotifications($query, $user_id, $timestamp);
     }
+
+    /*
+     * Get Scheduled Notifications
+     * @param schedule Id
+     * @return
+     */
+    public function getScheduledNotificationById($id)
+    {
+        return NotificationSchedule::where('_id', $id)->first();
+    }
+
+    public function updateScheduledNotification($where, $data)
+    {
+        try {
+            if ($this->thumbnailPath) {
+                $data['thumbnail'] = $this->thumbnailPath;
+            }
+            $notificationSchedule = NotificationSchedule::where($where)->update($data);
+            if ($notificationSchedule) {
+                $response = ['status_code' => 200, 'message' => 'Schedule updated successfully'];
+            } else {
+                $response = ['status_code' => 400, 'message' => 'Unable to update schedule'];
+            }
+        } catch (Exception $e) {
+            Log::error($e);
+            $response = ['status_code' => 400, 'message' => $e->getMessage()];
+        }
+        return $response;
+    }
 }

@@ -735,4 +735,35 @@ class MessagehubManager
         $update_data['updated_at'] = Carbon::now();
         $this->messagehubRepository->updateNotificationLogByParam($where, $update_data);
     }
+
+    /**
+     * Get the notification data
+     *  @param $request 
+     * @return collection
+     */
+    public function getScheduledNotificationFormData($request)
+    {
+        try{
+            $notification = [];
+            if (!empty($request->id)) {
+                $notification = $this->messagehubRepository->getScheduledNotificationById($request->id);
+            }
+            return $notification;
+        } catch (Exception $e) {
+                Log::error($e);
+        }
+    }
+
+    /**
+     * updateScheduledNotification
+     *
+     * @param  array $requestData
+     */
+    public function updateScheduledNotification($requestData)
+    {
+        $where = ['_id' => $requestData['scheduleId']];
+        unset($requestData['thumbnail']);
+        extract($this->messagehubRepository->updateScheduledNotification($where, $requestData));
+        return ['status_code' => $status_code, 'message' => $message];
+    }
 }
