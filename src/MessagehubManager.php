@@ -266,7 +266,7 @@ class MessagehubManager
     public function sendNotification($data, $logID, $unreadCount, $comment_type = '')
     {
         try {
-            $pushMessage = htmlspecialchars(trim(strip_tags($data['message'])));
+            $pushMessage = htmlspecialchars(trim(processPushNotificationText($data['message'])));
 
             //If the user is from flutter app
             if(isset($data['is_flutter']) && $data['is_flutter'] == 1){

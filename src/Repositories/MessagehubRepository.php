@@ -657,7 +657,7 @@ class MessagehubRepository extends BaseRepository
             // the name of topic, and conditional statement
             $recipient -> setSingleRecipient($data['device_token']);
             // Setup Notificaition title and body
-            $notification -> setNotification($data['title'], $data['message']);
+            $notification -> setNotification($data['title'], processPushNotificationText($data['message']));
             // Build FCM request payload
             //if($data['device_type'] !== 'appNameIOS'){
                 $fcmData = new Data();
