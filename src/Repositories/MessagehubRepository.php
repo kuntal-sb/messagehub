@@ -780,7 +780,7 @@ class MessagehubRepository extends BaseRepository
             if(!empty($this->notificationData['employers'])){
                 $data['employers'] = [];
                 foreach ($this->notificationData['employers'] as $key => $employer) {
-                    $data['employers'][] = base64_decode($employer);
+                    $data['employers'][] = (int) base64_decode($employer);
                 }
             }
             
@@ -1384,7 +1384,7 @@ class MessagehubRepository extends BaseRepository
             $param = [[
                     '$match' => [
                         'employers' =>[
-                            '$all' => $employers
+                            '$in' => $employers
                         ]
                     ],
                     
