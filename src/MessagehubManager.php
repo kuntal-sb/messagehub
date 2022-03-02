@@ -195,9 +195,13 @@ class MessagehubManager
             $image_info = getimagesize($input);
             $image_width = $image_info[0];
             $image_height = $image_info[1];
-            if($image_width > 300 && $image_height > 200){
+            if($image_width > 2000){
                 $status_code = 400;
-                $message = 'Thumbnail should not exceed the mentioned dimensions(W: 300, H: 200)';
+                $message = 'Thumbnail should not exceed the mentioned dimensions(W: 2000px)';
+            }
+            if($image_height > 2000){
+                $status_code = 400;
+                $message = 'Thumbnail should not exceed the mentioned dimensions(H: 2000px)';
             }
             if( $v->passes() ) {
                 $name = $input->getClientOriginalName();
