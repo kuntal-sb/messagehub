@@ -113,6 +113,7 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['email_template'] = !empty($this->notificationData['email_template'])?$this->notificationData['email_template']:'';
         $this->notificationData['email_body'] = !empty($this->notificationData['email_body'])?$this->notificationData['email_body']:'';
         $this->notificationData['target_screen'] = !empty($this->notificationData['target_screen'])?$this->notificationData['target_screen']:'';
+        $this->notificationData['target_screen_param'] = !empty($this->notificationData['target_screen_param'])?$this->notificationData['target_screen_param']:'';
     }
 
     /**
@@ -399,7 +400,7 @@ class MessagehubRepository extends BaseRepository
 
                 $deviceType = $this->getDeviceType($deviceType);
 
-                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $this->notificationData['message'],'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $this->notificationData['title'],'app_store_target' => $appStoreTarget, 'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'] );
+                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $this->notificationData['message'],'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $this->notificationData['title'],'app_store_target' => $appStoreTarget, 'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'], 'target_screen_param' => $this->notificationData['target_screen_param'] );
 
                 $seconds=0+($this->increment*2);
                 sendNotifications::dispatch($send_data)->delay($seconds);
@@ -603,7 +604,7 @@ class MessagehubRepository extends BaseRepository
             );
             $http2ch = curl_init();
             curl_setopt($http2ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new", "target_screen" : "'.$data['target_screen'].'","comment_type" : "'.$comment_type.'"}}';
+            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new", "target_screen" : "'.$data['target_screen'].'","target_screen_param" : "'.$data['target_screen_param'].'","comment_type" : "'.$comment_type.'"}}';
 
             Log::info('Apn Message: '.$message);
 
@@ -663,7 +664,7 @@ class MessagehubRepository extends BaseRepository
                 $fcmData = new Data();
                 
                 $fcmDataArr = [];
-                $fcmDataArr['data'] = ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId,  'msg_type' => "new",  'target_screen' => $data['target_screen']];
+                $fcmDataArr['data'] = ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId,  'msg_type' => "new",  'target_screen' => $data['target_screen'],  'target_screen_param' => $data['target_screen_param']];
                 $fcmDataArr['apns'] = ['payload' => ['aps'=>['badge'=>$unreadCount,'contentAvailable' => true]]];
                 
                 $fcmDataArr['data']['comment_type'] = $comment_type;
