@@ -165,6 +165,63 @@ class MessagehubManager
         return ['status_code' => $status_code, 'message' => $message];
     }
 
+    /**
+     * resendNotifications.
+     * @param collection $notification
+     * @param request
+     * @return array [status code, message]
+     */
+    public function resendNotifications($notification, $request)
+    {
+        $notificationDetails = [];
+        switch ($request->action) {
+            case 'failed':
+                $notificationDetails = $notification->pushNotifications()->where(['status' => 'failed']);
+                break;
+            case 'not-opened':
+                $notificationDetails = $notification->pushNotifications()->where('status', '!=','failed')->where('open_status', 0)->where('delivered_status', 0);
+                break;
+            case 'all':
+                if($request->type == 'email'){
+                    $notificationDetails = $notification->emailNotifications();
+                }else{
+                $notificationDetails = $notification->pushNotifications();
+                }
+                break;
+            default:
+                // code...
+                break;
+        }
+
+        //Resend Notifications do not make new entry into table
+        if(!empty($notification)){
+            $this->setNotificationData($notification->toArray());
+            $brokerList = [];
+
+            if($notificationDetails->count() > 0){
+                $employeeList = [];
+                foreach($notificationDetails->orderBy('employer_id')->get() as $notificationDetail){
+                    if(!isset($brokerList[$notificationDetail->employer_id])){
+                        extract($this->getBrokerAndEmployerById($notificationDetail->employer_id));
+                        $brokerList[$notificationDetail->employer_id] = $brokerId;
+                        $this->messagehubRepository->setPushInfo($brokerId);
+                    }
+                    $this->messagehubRepository->setResendData($notificationDetail);
+                    if($request->type != 'email'){
+                    $this->messagehubRepository->dispatchPushNotification($notificationDetail->employee_id, $notificationDetail->employer_id);
+                }
+
+                    $employeeList[] = ['id'=> $notificationDetail->employee_id, 'email'=> $notificationDetail->employee->email];
+                }
+
+                if($request->type == 'email'){
+                    $this->messagehubRepository->dispatchEmailNotification($employeeList, $notificationDetail->employer_id);
+                }
+                $this->messagehubRepository->updateByParam(['id' => $notification->id],['resend_count' => $notification->resend_count + 1]);
+            }
+        }
+    }
+
     /*
      * scheduleNotification
      * 
@@ -197,11 +254,11 @@ class MessagehubManager
             $image_height = $image_info[1];
             if($image_width > 2000){
                 $status_code = 400;
-                $message = 'Thumbnail should not exceed the mentioned dimensions(W: 2000px)';
+                $message = 'Thumbnail should not exceed the mentioned dimensions(W: 2000)';
             }
             if($image_height > 2000){
                 $status_code = 400;
-                $message = 'Thumbnail should not exceed the mentioned dimensions(H: 2000px)';
+                $message = 'Thumbnail should not exceed the mentioned dimensions(H: 2000)';
             }
             if( $v->passes() ) {
                 $name = $input->getClientOriginalName();
@@ -244,26 +301,25 @@ class MessagehubManager
     public function sendOutNotifications($data)
     {
         try{
-            
             $message_id = $data['message_id'];
             Log::info('Message Data : '.json_encode($data));
             $fcm_key = $data['fcm_key'];
 
             //Get badge count // Add one for the new message
             $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + $this->unreadOldNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + 1;
-            
+            if(isset($data['is_resend']) && $data['is_resend']){
+                $logID  = $data['push_message_id']; 
+            }else{
             $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
-
+            }
             $this->sendNotification($data, $logID, $unreadCount);
-
-            
         }catch(Exception $e){
             Log::error($e);
         }
     }
 
     /**
-     * sendOutNotifications to devices
+     * sendNotification to devices
      * @param array $data, variable $logID $unreadCount
      * @return 
      */
@@ -317,25 +373,23 @@ class MessagehubManager
                     );
 
             $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
-            if($is_success == 1){
-                SendLogToElastic::dispatch([
+            Log::error('--exception_message--'.$exception_message);
+
+            $elasticData = [
                     "userId" => $data['employee_id'],
                     "screenName" => "MessageHub",
                     "eventName" => "Delivered",
                     "eventType" => "Notification",
+                    "resend" => isset($data['is_resend'])?isset($data['is_resend']):false,
                     "notificationId" => $logID
-                ])->onQueue('elastic_queue');
+                ];
+            if($is_success == 1){
+                $elasticData['eventName'] = "Delivered";
             }else{
-                SendLogToElastic::dispatch([
-                    "userId" => $data['employee_id'],
-                    "screenName" => "MessageHub",
-                    "eventName" => "Failed",
-                    "eventType" => "Notification",
-                    "notificationId" => $logID
-                ])->onQueue('elastic_queue');
-                Log::error('--exception_message--'.$exception_message);
-                throw new Exception($exception_message);
+                $elasticData['eventName'] = "Failed";
             }
+            SendLogToElastic::dispatch($elasticData)->onQueue('elastic_queue');
+
         }catch(Exception $e){
             Log::error($e);
         }

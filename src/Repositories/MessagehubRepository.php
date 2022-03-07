@@ -64,6 +64,12 @@ class MessagehubRepository extends BaseRepository
 
     private $notificationIds = [];
 
+    private $pushInfo = [];
+
+    private $isResend = false;
+
+    private $resendData = [];
+
     /**
      * @var TemplateManager
      */
@@ -114,6 +120,29 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['email_body'] = !empty($this->notificationData['email_body'])?$this->notificationData['email_body']:'';
         $this->notificationData['target_screen'] = !empty($this->notificationData['target_screen'])?$this->notificationData['target_screen']:'';
         $this->notificationData['target_screen_param'] = !empty($this->notificationData['target_screen_param'])?$this->notificationData['target_screen_param']:'';
+
+        if(isset($data['id']) && $data['notification_type'] == 'email'){
+            $this->notificationData['email_subject'] = $data['title'];
+            $this->notificationData['email_body'] = $data['message'];
+        }
+    }
+
+    public function setPushInfo($brokerId){
+        //Get the assigned app of the broker who created this employer
+        $assigned_app = $this->getAppDetails($brokerId);
+
+        //$appIdentifier = $assigned_app->app_identifier;
+        $this->pushInfo['androidApi'] = $assigned_app->android_api;
+        $this->pushInfo['appStoreTarget'] = $assigned_app->app_store_target;
+        
+        //Set file path
+        $this->pushInfo['iosCertificateFile'] = public_path().'/push/ios/'.$assigned_app->ios_certificate_file;
+        $this->pushInfo['fcmKey'] = public_path().'/push/android/'.$assigned_app->fcm_key;
+    }
+
+    public function setResendData($notification){
+        $this->resendData = $notification->toArray();
+        $this->isResend = true;
     }
 
     /**
@@ -334,16 +363,7 @@ class MessagehubRepository extends BaseRepository
                 $employees = $employeeList = $this->notificationData['employees'];
             }
 
-            //Get the assigned app of the broker who created this employer
-            $assigned_app = $this->getAppDetails($brokerId);
-
-            //$appIdentifier = $assigned_app->app_identifier;
-            $androidApi = $assigned_app->android_api;
-            $appStoreTarget = $assigned_app->app_store_target;
-            
-            //Set file path
-            $iosCertificateFile = public_path().'/push/ios/'.$assigned_app->ios_certificate_file;
-            $fcmKey = public_path().'/push/android/'.$assigned_app->fcm_key;
+            $this->setPushInfo($brokerId);
 
             foreach($employerList as $employerId){
                 if(empty($employeeList)){
@@ -352,7 +372,7 @@ class MessagehubRepository extends BaseRepository
 
                 if(!empty($employees)){
                     foreach($employees as $employee){
-                        $this->dispatchPushNotification($employee, $employerId, $iosCertificateFile, $androidApi, $fcmKey, $appStoreTarget);
+                        $this->dispatchPushNotification($employee, $employerId);
                     }
                 }
             }
@@ -371,10 +391,10 @@ class MessagehubRepository extends BaseRepository
      *  @param
      *  @return
      */    
-    public function dispatchPushNotification($employee, $employerId, $iosCertificateFile, $androidApi, $fcmKey , $appStoreTarget)
+    public function dispatchPushNotification($employee, $employerId)
     {
         try {
-
+            $deviceToken = $deviceType = $is_flutter = '';
             if(is_array($employee)){
                 $employeeId  = $employee['id'];
                 $deviceToken = $employee['device_id'];
@@ -384,32 +404,56 @@ class MessagehubRepository extends BaseRepository
                 $employeeId = $employee;
                 $device_details = $this->getDevicebyEmployee($employeeId);
 
-                if(!$device_details){
-                    return 0;
+                if($device_details){
+                    $deviceToken = $device_details->device_id;
+                    $deviceType  = $device_details->device_type;
+                    $is_flutter  = $device_details->is_flutter;
                 }
-                $deviceToken = $device_details->device_id;
-                $deviceType  = $device_details->device_type;
-                $is_flutter  = $device_details->is_flutter;
             }
 
-            $notificationMessageId = $this->addNotification($employerId, true);
+            if($this->isResend){
+                $messageId = $this->notificationData['id'];
+                $pushMessageId = $this->resendData['id'];
+            }else{
+                $messageId = $this->addNotification($employerId, true);
+                $pushMessageId = '';
+            }
 
             //This condition will handle sending multiple push if different users logged in same device.
-            if(!in_array($deviceToken, $this->duplicateDevices)){
+            if(!in_array($deviceToken, $this->duplicateDevices) && $deviceToken != ''){
                 $this->duplicateDevices[] = $deviceToken;
 
                 $deviceType = $this->getDeviceType($deviceType);
 
-                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'device_type' => (string) $deviceType,'device_token'=> (string) $deviceToken,'message' => (string) $this->notificationData['message'],'ios_certificate_file' => (string) $iosCertificateFile,'android_api' => (string) $androidApi,'fcm_key' => $fcmKey,'title' => $this->notificationData['title'],'app_store_target' => $appStoreTarget, 'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'], 'target_screen_param' => $this->notificationData['target_screen_param'] );
+                $send_data = array(
+                    'employee_id' => (string) $employeeId, 
+                    'employer_id' => (string) $employerId, 
+                    'message_id'=> (string) $messageId,
+                    'push_message_id'=> (string) $pushMessageId,
+                    'device_type' => (string) $deviceType,
+                    'device_token'=> (string) $deviceToken,
+                    'message' => (string) $this->notificationData['message'],
+                    'ios_certificate_file' => (string) $this->pushInfo['iosCertificateFile'],
+                    'android_api' => (string) $this->pushInfo['androidApi'],
+                    'fcm_key' => $this->pushInfo['fcmKey'],
+                    'title' => $this->notificationData['title'],
+                    'app_store_target' => $this->pushInfo['appStoreTarget'], 
+                    'is_flutter' => $is_flutter,
+                    'target_screen' => $this->notificationData['target_screen'],
+                    'target_screen_param' => $this->notificationData['target_screen_param'],
+                    'is_resend' => $this->isResend
+                );
 
                 $seconds=0+($this->increment*2);
                 sendNotifications::dispatch($send_data)->delay($seconds);
                 $this->increment ++;
-            }else{//user has no device so make entry into notifications_message_hub_push_log with failed status
-                $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $notificationMessageId,'message' => (string) $this->notificationData['message'],'title' => $this->notificationData['title'],'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'],'exception_message'=>'App not Downloaded' );
-                $messageStatus = 'failed';
+            }else{//user has no device so make entry into notifications_message_hub_push_log with failed status when not resending message
+                if(! $this->isResend){
+                    $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $messageId,'message' => (string) $this->notificationData['message'],'title' => $this->notificationData['title'],'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'],'exception_message'=>'App not Downloaded' );
+                    $messageStatus = 'failed';
 
-                $logID = $this->insertNotificationLog($send_data, $notificationMessageId, $messageStatus);
+                    $logID = $this->insertNotificationLog($send_data, $messageId, $messageStatus);
+                }
             }
         } catch (Exception $e) {
             Log::error($e);   
@@ -517,7 +561,12 @@ class MessagehubRepository extends BaseRepository
     public function dispatchEmailNotification($employees,$employerId)
     {
         try {
-            $notificationMessageId = $this->addNotification($employerId);
+
+            if($this->isResend){
+                $notificationMessageId = $this->notificationData['id'];
+            }else{
+                $notificationMessageId = $this->addNotification($employerId, true);
+            }
 
             if(method_exists($this->templateManager,'mapEmailTemplateKeywords')){
                 $this->notificationData['email_body'] = $this->templateManager->mapEmailTemplateKeywords($this->notificationData['email_body'], $employerId);
@@ -531,8 +580,9 @@ class MessagehubRepository extends BaseRepository
                             'email_body' => $this->notificationData['email_body'],
                             'message_id' => $notificationMessageId];
 
-                NotificationMessageHubEmailLog::create(['employee_id' => $employee['id'], 'employer_id' => $employerId, 'message_id' => $notificationMessageId]);
-
+                if(!$this->isResend){
+                    NotificationMessageHubEmailLog::create(['employee_id' => $employee['id'], 'employer_id' => $employerId, 'message_id' => $notificationMessageId]);
+                }
                 $message = (new NotificationEmail($emailData))->onQueue('email_queue');
                 Mail::to($employee['email'])->queue($message);
             }
@@ -603,8 +653,10 @@ class MessagehubRepository extends BaseRepository
                 "User-Agent: My Sender"
             );
             $http2ch = curl_init();
+            $target_screen_param = isset($data['target_screen_param'])?$data['target_screen_param']:'';
+            
             curl_setopt($http2ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new", "target_screen" : "'.$data['target_screen'].'","target_screen_param" : "'.$data['target_screen_param'].'","comment_type" : "'.$comment_type.'"}}';
+            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new", "target_screen" : "'.$data['target_screen'].'","target_screen_param" : "'.$target_screen_param.'","comment_type" : "'.$comment_type.'"}}';
 
             Log::info('Apn Message: '.$message);
 
