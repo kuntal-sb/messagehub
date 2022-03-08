@@ -311,6 +311,7 @@ class MessagehubManager
                 $logID  = $data['push_message_id']; 
             }else{
             $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
+            $unreadCount = $unreadCount + 1;
             }
             $this->sendNotification($data, $logID, $unreadCount);
         }catch(Exception $e){
@@ -323,9 +324,12 @@ class MessagehubManager
      * @param array $data, variable $logID $unreadCount
      * @return 
      */
-    public function sendNotification($data, $logID, $unreadCount, $comment_type = '')
+    public function sendNotification($data, $logID, $unreadCount)
     {
         try {
+
+            $comment_type = isset($data['comment_type']) ? $data['comment_type'] : '';
+            
             $pushMessage = htmlspecialchars(trim(processPushNotificationText($data['message'])));
 
             //If the user is from flutter app
