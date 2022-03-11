@@ -267,6 +267,7 @@ class MessagehubManager
                 $response = $s3Service->uploadFile($filePath, 's3', $input);
                 if($response['status_code'] == 200){
                     $this->messagehubRepository->setThumbnailPath($response['file_url']);
+                    $thumbnail_path = $response['file_url'];
                 }
             }else{
                 $thumbnail_path = '';
@@ -324,7 +325,7 @@ class MessagehubManager
      * @param array $data, variable $logID $unreadCount
      * @return 
      */
-    public function sendNotification($data, $logID, $unreadCount)
+    public function sendNotification($data, $logID, $unreadCount, $comment_type = '')
     {
         try {
 
@@ -530,9 +531,9 @@ class MessagehubManager
      * Return Broker Id and Employer Id of given employer id from admin/broker  or loggedin user
      *
      */
-    public function getBrokerAndEmployerId($role)
+    public function getBrokerAndEmployerId($role, $userId = '', $refererId = '', $brokerId = '')
     {
-        return $this->messagehubRepository->getBrokerAndEmployerId($role);
+        return $this->messagehubRepository->getBrokerAndEmployerId($role, $userId, $refererId, $brokerId);
     }
 
     public function getBrokerAndEmployerById($employer_id)
@@ -585,7 +586,7 @@ class MessagehubManager
 
             //Remove record from scheduled list
             //$notifications->delete();
-            
+
             if($notifications->recurrence == 'does_not_repeat'){
                 $notifications->status = 'Completed';
                 $notifications->save();
@@ -619,7 +620,7 @@ class MessagehubManager
      */
     public function processNotificationsByApp($apps)
     {
-        foreach ($notifications->apps as $key => $appId) {
+        foreach ($apps as $key => $appId) {
             $brokerIds = $this->getAppBrokers([$appId]);
             if(empty($brokerIds)){
                 continue;
