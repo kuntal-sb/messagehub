@@ -337,7 +337,7 @@ class MessagehubManager
 
             //If the user is from flutter app
             if(isset($data['is_flutter']) && $data['is_flutter'] == 1){
-                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
+                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$message_id);
                 Log::info(json_encode($fcmPush));
                 $is_success = $fcmPush['is_success'];
                 $exception_message = $fcmPush['exception_message'];
