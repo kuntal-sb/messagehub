@@ -304,17 +304,19 @@ class MessagehubManager
         try{
             $message_id = $data['message_id'];
             Log::info('Message Data : '.json_encode($data));
-            $fcm_key = $data['fcm_key'];
+            //$fcm_key = $data['fcm_key'];
 
             //Get badge count // Add one for the new message
             $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + $this->unreadOldNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + 1;
-            if(isset($data['is_resend']) && $data['is_resend']){
+            
+            if(isset($data['is_resend']) && $data['is_resend'] || (isset($data['isCommentOrReply']) && $data['isCommentOrReply'])){
                 $logID  = $data['push_message_id']; 
             }else{
             $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
             $unreadCount = $unreadCount + 1;
             }
-            $this->sendNotification($data, $logID, $unreadCount);
+
+            $this->sendNotification($data, $logID, $message_id, $unreadCount);
         }catch(Exception $e){
             Log::error($e);
         }
@@ -325,7 +327,7 @@ class MessagehubManager
      * @param array $data, variable $logID $unreadCount
      * @return 
      */
-    public function sendNotification($data, $logID, $unreadCount, $comment_type = '')
+    public function sendNotification($data, $logID, $message_id, $unreadCount)
     {
         try {
 
@@ -349,7 +351,7 @@ class MessagehubManager
 
                         $iosPayload = array('badge' => $unreadCount,'custom' => array('customData' => array('notification_id' => $logID)));
                         $app_store_target = $data['app_store_target'];
-                        extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$logID,$pushMessage,$data['ios_certificate_file'], $data, $comment_type));
+                        extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$message_id,$pushMessage,$data['ios_certificate_file'], $data, $comment_type));
 
                         $is_success = $status==200?1:0;
                         $exception_message = $message;
@@ -357,13 +359,13 @@ class MessagehubManager
                     catch(Exception $e){
                         Log::error(' apn error'.$e->getMessage());
                         //If exception occurred, then hit FCM for the old live apps.
-                    $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID,$comment_type);
+                    $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$message_id,$comment_type);
                         Log::info('--ios fcm push--'.json_encode($fcmPush));
                         $is_success = $fcmPush['is_success'];
                         $exception_message = $fcmPush['exception_message'];
                     }
                 }else{//For android hit fcm push notification
-                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID,$comment_type);
+                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$message_id,$comment_type);
                     Log::info(json_encode($fcmPush));
                     $is_success = $fcmPush['is_success'];
                     $exception_message = $fcmPush['exception_message'];
@@ -377,8 +379,11 @@ class MessagehubManager
                     'updated_at'=>Carbon::now()
                     );
 
-            $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
             Log::error('--exception_message--'.$exception_message);
+
+            if(!(isset($data['isCommentOrReply']) && $data['isCommentOrReply'])){
+                $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
+            }
 
             $elasticData = [
                     "userId" => $data['employee_id'],
