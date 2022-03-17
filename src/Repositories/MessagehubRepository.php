@@ -761,7 +761,7 @@ class MessagehubRepository extends BaseRepository
                 $fcmData = new Data();
                 
                 $fcmDataArr = [];
-                $fcmDataArr['data'] = ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId, 'comment_id' => $comment_id, 'parent_comment_id' => $parent_comment_id,  'msg_type' => "new",  'target_screen' => $data['target_screen'],  'target_screen_param' => isset($data['target_screen_param'])?$data['target_screen_param']:''];
+                $fcmDataArr['data'] = ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId, 'comment_id' =>(string) $comment_id, 'parent_comment_id' =>(string) $parent_comment_id,  'msg_type' => "new",  'target_screen' => $data['target_screen'],  'target_screen_param' => isset($data['target_screen_param'])?$data['target_screen_param']:''];
                 
                 $fcmDataArr['apns'] = ['payload' => ['aps'=>['badge'=>$unreadCount,'contentAvailable' => true]]];
                 
