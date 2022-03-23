@@ -10,6 +10,9 @@ use App\Http\Services\S3Service;
 use Carbon\Carbon;
 use Session;
 use App\Jobs\SendLogToElastic;
+use Strivebenifits\Messagehub\Jobs\sendNotifications;
+use Illuminate\Bus\Batch;
+use Illuminate\Support\Facades\Bus;
 
 class MessagehubManager
 {
@@ -200,18 +203,35 @@ class MessagehubManager
 
             if($notificationDetails->count() > 0){
                 $employeeList = [];
-                foreach($notificationDetails->orderBy('employer_id')->get() as $notificationDetail){
-                    if(!isset($brokerList[$notificationDetail->employer_id])){
-                        extract($this->getBrokerAndEmployerById($notificationDetail->employer_id));
-                        $brokerList[$notificationDetail->employer_id] = $brokerId;
-                        $this->messagehubRepository->setPushInfo($brokerId);
-                    }
-                    $this->messagehubRepository->setResendData($notificationDetail);
-                    if($request->type != 'email'){
-                    $this->messagehubRepository->dispatchPushNotification($notificationDetail->employee_id, $notificationDetail->employer_id);
-                }
+                $notificationData = $notificationDetails->orderBy('employer_id')->get();
+                $chunkEmployeeList = $notificationData->chunk(20);
 
-                    $employeeList[] = ['id'=> $notificationDetail->employee_id, 'email'=> $notificationDetail->employee->email];
+                foreach($chunkEmployeeList as $employeeListData){
+                    $pushBatchList = [];
+                    foreach($employeeListData as $notificationDetail){
+                        if(!isset($brokerList[$notificationDetail->employer_id])){
+                            extract($this->getBrokerAndEmployerById($notificationDetail->employer_id));
+                            $brokerList[$notificationDetail->employer_id] = $brokerId;
+                            $this->messagehubRepository->setPushInfo($brokerId);
+                        }
+                        $this->messagehubRepository->setResendData($notificationDetail);
+                        if($request->type != 'email'){
+                            $pushNotificationData = $this->messagehubRepository->dispatchPushNotification($notificationDetail->employee_id, $notificationDetail->employer_id);
+                            if(!empty($pushNotificationData)){
+                                $pushBatchList[] = new sendNotifications($pushNotificationData);
+                            }
+                        }
+
+                        $employeeList[] = ['id'=> $notificationDetail->employee_id, 'email'=> $notificationDetail->employee->email];
+                    }
+
+                    if(!empty($pushBatchList)){
+                        Bus::batch([
+                            $pushBatchList
+                        ])->then(function (Batch $batch) {
+                        })->onQueue('push_notification_queue')
+                        ->name('push_notification_queue')->dispatch();
+                    }
                 }
 
                 if($request->type == 'email'){
