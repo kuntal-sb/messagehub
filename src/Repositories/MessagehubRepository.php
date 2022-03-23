@@ -220,7 +220,7 @@ class MessagehubRepository extends BaseRepository
                     });
         });
 
-        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at'])->orderBy('created_at', 'desc');
+        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value'])->orderBy('created_at', 'desc');
         return $notifications;
     }
 
@@ -235,7 +235,7 @@ class MessagehubRepository extends BaseRepository
 
         $notifications = $notifications->whereIn('notifications_message_hub.id', $messageIds);
 
-        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at'])->orderBy('created_at', 'desc');
+        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value'])->orderBy('created_at', 'desc');
         return $notifications;
     }
 
