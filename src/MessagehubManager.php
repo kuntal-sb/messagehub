@@ -327,13 +327,13 @@ class MessagehubManager
             //$fcm_key = $data['fcm_key'];
 
             //Get badge count // Add one for the new message
-            $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + $this->unreadOldNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + 1;
+            $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + $this->unreadOldNotificationMessages($data['employee_id'],date('Y-m-d', 0));
             
             if(isset($data['is_resend']) && $data['is_resend'] || (isset($data['isCommentOrReply']) && $data['isCommentOrReply'])){
                 $logID  = $data['push_message_id']; 
             }else{
-            $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
-            $unreadCount = $unreadCount + 1;
+                $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
+                $unreadCount = $unreadCount + 1;
             }
 
             $this->sendNotification($data, $logID, $message_id, $unreadCount);
