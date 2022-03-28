@@ -35,6 +35,12 @@ use Mail;
 use App\Http\Managers\TemplateManager;
 
 use App\Http\Repositories\MappedHashtagRepository;
+use App\Jobs\ProcessBulkPushNotification;
+use App\Jobs\ProcessBulkEmailNotification;
+use App\Jobs\ProcessBulkTextNotification;
+
+use Illuminate\Bus\Batch;
+use Illuminate\Support\Facades\Bus;
 
 /**
  * Class MessagehubRepository
@@ -125,6 +131,13 @@ class MessagehubRepository extends BaseRepository
             $this->notificationData['email_subject'] = $data['title'];
             $this->notificationData['email_body'] = $data['message'];
         }
+
+        $this->notificationData['created_by'] = !empty($data['created_by'])?$data['created_by']:auth()->user()->id;
+        $this->notificationData['created_as'] = !empty($data['created_as'])?$data['created_as']:getEmployerId();
+
+        if(!empty($data['thumbnail_path'])){
+            $this->setThumbnailPath($data['thumbnail_path']);
+        }
     }
 
     public function setPushInfo($brokerId){
@@ -207,7 +220,7 @@ class MessagehubRepository extends BaseRepository
                     });
         });
 
-        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at'])->orderBy('created_at', 'desc');
+        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value'])->orderBy('created_at', 'desc');
         return $notifications;
     }
 
@@ -222,7 +235,7 @@ class MessagehubRepository extends BaseRepository
 
         $notifications = $notifications->whereIn('notifications_message_hub.id', $messageIds);
 
-        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at'])->orderBy('created_at', 'desc');
+        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value'])->orderBy('created_at', 'desc');
         return $notifications;
     }
 
@@ -363,19 +376,25 @@ class MessagehubRepository extends BaseRepository
                 $employees = $employeeList = $this->notificationData['employees'];
             }
 
-            $this->setPushInfo($brokerId);
+            //$this->setPushInfo($brokerId);
 
-            foreach($employerList as $employerId){
-                if(empty($employeeList)){
-                    $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate);
-                }
+            $chunkEmployerList = array_chunk($employerList, 2);
 
-                if(!empty($employees)){
-                    foreach($employees as $employee){
-                        $this->dispatchPushNotification($employee, $employerId);
+            foreach($chunkEmployerList as $employerList){
+                $batchList = [];
+                foreach($employerList as $employerId){
+                    if(empty($employeeList)){
+                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate);
                     }
+                    $batchList[] = new ProcessBulkPushNotification($brokerId, $employerId, $employees, $this->notificationData);
                 }
+                Bus::batch([
+                    $batchList
+                ])->then(function (Batch $batch) {
+                })->onQueue('bulk_push_notification_queue')
+                ->name('bulk_push_notification_queue')->dispatch();
             }
+
             $status_code = 200;
             $message = 'Your users will receive notifications shortly!';
         } catch (Exception $e) {
@@ -418,6 +437,7 @@ class MessagehubRepository extends BaseRepository
                 $messageId = $this->addNotification($employerId, true);
                 $pushMessageId = '';
             }
+            $pushNotificationData = array();
 
             //This condition will handle sending multiple push if different users logged in same device.
             if(!in_array($deviceToken, $this->duplicateDevices) && $deviceToken != ''){
@@ -425,7 +445,7 @@ class MessagehubRepository extends BaseRepository
 
                 $deviceType = $this->getDeviceType($deviceType);
 
-                $send_data = array(
+                $pushNotificationData = array(
                     'employee_id' => (string) $employeeId, 
                     'employer_id' => (string) $employerId, 
                     'message_id'=> (string) $messageId,
@@ -445,7 +465,7 @@ class MessagehubRepository extends BaseRepository
                 );
 
                 $seconds=0+($this->increment*2);
-                sendNotifications::dispatch($send_data)->delay($seconds);
+                //sendNotifications::dispatch($pushNotificationData)->delay($seconds);
                 $this->increment ++;
             }else{//user has no device so make entry into notifications_message_hub_push_log with failed status when not resending message
                 if(! $this->isResend){
@@ -455,6 +475,8 @@ class MessagehubRepository extends BaseRepository
                     $logID = $this->insertNotificationLog($send_data, $messageId, $messageStatus);
                 }
             }
+
+            return $pushNotificationData;
         } catch (Exception $e) {
             Log::error($e);   
         }
@@ -470,11 +492,11 @@ class MessagehubRepository extends BaseRepository
     {
         try {
             Log::info(json_encode($employerIds));
-            foreach ($employerIds as $key => $employerId) {
-                $employees = $this->getEmployeeBySentType($employerId);
-
-                $this->dispatchTextNotification($employees, $employerId);
-            }
+            ProcessBulkTextNotification::dispatch($employerIds, $this->notificationData);
+            // foreach ($employerIds as $key => $employerId) {
+            //     $employees = $this->getEmployeeBySentType($employerId);
+            //     $this->dispatchTextNotification($employees, $employerId);
+            // }
 
             $message = 'Your users will receive the SMS shortly!';
             $status_code = 200;
@@ -495,15 +517,24 @@ class MessagehubRepository extends BaseRepository
     {
         try {
             $notificationMessageId = $this->addNotification($employerId);
+            $chunkEmployeeList = array_chunk($employees, 20);
 
-            foreach ($employees as $employee) {
-                $smsData = ['employee' => $employee,
+            foreach($chunkEmployeeList as $employeeList){
+                $batchList = [];
+                foreach($employeeList as $employee){
+                    $smsData = ['employee' => $employee,
                             'employer_id' => $employerId,
                             'message' => $this->notificationData['message'],
-                            'message_id' => $notificationMessageId];
-
-                //Send Text notifications to queue
-                sendSms::dispatch($smsData)->delay(Carbon::now()->addSeconds(5));
+                            'message_id' => $notificationMessageId];               
+                        $batchList[] = new sendSms($smsData);
+                }
+                if(!empty($batchList)){
+                    Bus::batch([
+                        $batchList
+                    ])->then(function (Batch $batch) {
+                    })->onQueue('txt_notification_queue')
+                    ->name('txt_notification_queue')->dispatch();
+                }
             }
         } catch (Exception $e) {
             Log::error($e);
@@ -534,15 +565,23 @@ class MessagehubRepository extends BaseRepository
                 $employees = $employeeList = $userRepository->getByWhereIn($this->notificationData['employees'], 'id', [], ['id','email']);
             }
 
-            foreach($employerList as $employerId){
-                if(empty($employeeList)){
-                    $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate);
-                }
+            $chunkEmployerList = array_chunk($employerList, 2);
 
-                if(!empty($employees)){
-                    $this->dispatchEmailNotification($employees, $employerId);
+            foreach($chunkEmployerList as $employerList){
+                $batchList = [];
+                foreach($employerList as $employerId){
+                    if(empty($employeeList)){
+                        $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate);
+                    }
+                    $batchList[] = new ProcessBulkEmailNotification($employerId, $employees, $this->notificationData);
                 }
+                Bus::batch([
+                    $batchList
+                ])->then(function (Batch $batch) {
+                })->onQueue('bulk_email_notification_queue')
+                ->name('bulk_email_notification_queue')->dispatch();
             }
+
             $message = 'Your users will receive the Email!';
             $status_code = 200;
         } catch (Exception $e) {
@@ -655,8 +694,11 @@ class MessagehubRepository extends BaseRepository
             $http2ch = curl_init();
             $target_screen_param = isset($data['target_screen_param'])?$data['target_screen_param']:'';
             
+            $comment_id = isset($data['comment_id']) ? $data['comment_id'] : 0;
+            $parent_comment_id = isset($data['parent_comment_id']) ? $data['parent_comment_id'] : 0;
+            
             curl_setopt($http2ch, CURLOPT_HTTP_VERSION, CURL_HTTP_VERSION_2_0);
-            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"message_type" : "new", "target_screen" : "'.$data['target_screen'].'","target_screen_param" : "'.$target_screen_param.'","comment_type" : "'.$comment_type.'"}}';
+            $message = '{"aps":{"alert":"'.$pushMessage.'","sound":"default","badge": '.$badgeCount.'},"customData": {"notification_id" : '.$notificationId.',"comment_id" : '.$comment_id.',"parent_comment_id" : '.$parent_comment_id.',"message_type" : "new", "target_screen" : "'.$data['target_screen'].'","target_screen_param" : "'.$target_screen_param.'","comment_type" : "'.$comment_type.'"}}';
 
             Log::info('Apn Message: '.$message);
 
@@ -713,10 +755,14 @@ class MessagehubRepository extends BaseRepository
             $notification -> setNotification($data['title'], processPushNotificationText($data['message']));
             // Build FCM request payload
             //if($data['device_type'] !== 'appNameIOS'){
+                $comment_id = isset($data['comment_id']) ? $data['comment_id'] : 0;
+                $parent_comment_id = isset($data['parent_comment_id']) ? $data['parent_comment_id'] : 0;
+
                 $fcmData = new Data();
                 
                 $fcmDataArr = [];
-                $fcmDataArr['data'] = ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId,  'msg_type' => "new",  'target_screen' => $data['target_screen'],  'target_screen_param' => isset($data['target_screen_param'])?$data['target_screen_param']:''];
+                $fcmDataArr['data'] = ['unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId, 'comment_id' =>(string) $comment_id, 'parent_comment_id' =>(string) $parent_comment_id,  'msg_type' => "new",  'target_screen' => $data['target_screen'],  'target_screen_param' => isset($data['target_screen_param'])?$data['target_screen_param']:''];
+                
                 $fcmDataArr['apns'] = ['payload' => ['aps'=>['badge'=>$unreadCount,'contentAvailable' => true]]];
                 
                 $fcmDataArr['data']['comment_type'] = $comment_type;
@@ -839,12 +885,12 @@ class MessagehubRepository extends BaseRepository
             
             if($this->notificationData['sent_type'] == 'choose-employer' && empty($data['employers'])){
                 //extract($this->getBrokerAndEmployerId(Session::get('role')));
-                extract($this->getBrokerAndEmployerById(getEmployerId()));
+                extract($this->getBrokerAndEmployerById($this->notificationData['employerId']));
                 $data['employers'][] = $employerId;
             }
 
-            $data['created_by'] = Auth::user()->id;
-            $data['created_as'] = getEmployerId();
+            $data['created_by'] = $this->notificationData['created_by'];
+            $data['created_as'] = $this->notificationData['created_as'];
             $data['thumbnail'] = $this->thumbnailPath;
             $data['notification_type'] = $this->notificationType;
 
@@ -1185,32 +1231,32 @@ class MessagehubRepository extends BaseRepository
      * @param $role
      * @return Array
      */
-    public function getBrokerAndEmployerId($role)
+    public function getBrokerAndEmployerId($role, $userId = '', $refererId = '', $brokerId = '')
     {
         switch($role){
             case config('role.ADMIN'):
             case config('role.BROKER'):
-                $employer_id = $broker_id = Auth::user()->id;
+                $employer_id = $broker_id = ($userId)?:Auth::user()->id;
             break;
             case config('role.EMPLOYER'):
-                $employer_id = Auth::user()->id;
-                $broker_id = Auth::user()->referer_id;
+                $employer_id = ($userId)?:Auth::user()->id;
+                $broker_id = ($refererId)?:Auth::user()->id;
             break;
             case config('role.HR_ADMIN'):
             case config('role.HR'):
-                $employer_id = Auth::user()->referer_id;
-                $broker_id = Auth::user()->broker_id;
+                $employer_id = ($refererId)?:Auth::user()->id;
+                $broker_id = ($brokerId)?:Auth::user()->id;
                 break;
             case config('role.CHLOE'):
-                $employer_id = Auth::user()->id;
-                $broker_id = Auth::user()->id;
+                $employer_id = ($userId)?:Auth::user()->id;
+                $broker_id = ($userId)?:Auth::user()->id;
             break;
             case config('role.BROKEREMPLOYEE'):
                 $employer_id = json_decode($employer_id);
-                $broker_id = Auth::user()->referer_id;
+                $broker_id = ($refererId)?:Auth::user()->id;
             break;
             default:
-                $employer_id = (Auth::user())?Auth::user()->id:$u_id;
+                $employer_id = ($userId)?:Auth::user()->id;
                 $broker_id = User::where('id',$employer_id)->select('referer_id')->first()->referer_id;
             break;
         }

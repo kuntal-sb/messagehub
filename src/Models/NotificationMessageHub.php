@@ -63,6 +63,14 @@ class NotificationMessageHub extends Model
     }
 
     /**
+     * Get filter template details
+     */
+    public function filterTemplate()
+    {
+        return $this->hasOne(\App\Models\FilterTemplate::class,'id','filter_value');
+    }
+
+    /**
      * Insert Record into Notification table
      * @return Return Id of inseted record
      */
@@ -88,6 +96,7 @@ class NotificationMessageHub extends Model
                     'expiry_date'   => !empty($requestData['expiry_date'])?date('Y-m-d',strtotime($requestData['expiry_date'])):'',
                     'target_screen'    => isset($requestData['target_screen'])?$requestData['target_screen']:'oehub',
                     'target_screen_param'    => isset($requestData['target_screen_param'])?$requestData['target_screen_param']:'',
+                    'allow_sharing' => isset($requestData['allow_sharing'])?$requestData['allow_sharing']:0,
                     'created_at'    => Carbon::now(),
                     'updated_at'    => Carbon::now()
                    );

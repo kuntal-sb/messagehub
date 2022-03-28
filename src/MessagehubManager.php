@@ -10,6 +10,9 @@ use App\Http\Services\S3Service;
 use Carbon\Carbon;
 use Session;
 use App\Jobs\SendLogToElastic;
+use Strivebenifits\Messagehub\Jobs\sendNotifications;
+use Illuminate\Bus\Batch;
+use Illuminate\Support\Facades\Bus;
 
 class MessagehubManager
 {
@@ -200,18 +203,35 @@ class MessagehubManager
 
             if($notificationDetails->count() > 0){
                 $employeeList = [];
-                foreach($notificationDetails->orderBy('employer_id')->get() as $notificationDetail){
-                    if(!isset($brokerList[$notificationDetail->employer_id])){
-                        extract($this->getBrokerAndEmployerById($notificationDetail->employer_id));
-                        $brokerList[$notificationDetail->employer_id] = $brokerId;
-                        $this->messagehubRepository->setPushInfo($brokerId);
-                    }
-                    $this->messagehubRepository->setResendData($notificationDetail);
-                    if($request->type != 'email'){
-                    $this->messagehubRepository->dispatchPushNotification($notificationDetail->employee_id, $notificationDetail->employer_id);
-                }
+                $notificationData = $notificationDetails->orderBy('employer_id')->get();
+                $chunkEmployeeList = $notificationData->chunk(20);
 
-                    $employeeList[] = ['id'=> $notificationDetail->employee_id, 'email'=> $notificationDetail->employee->email];
+                foreach($chunkEmployeeList as $employeeListData){
+                    $pushBatchList = [];
+                    foreach($employeeListData as $notificationDetail){
+                        if(!isset($brokerList[$notificationDetail->employer_id])){
+                            extract($this->getBrokerAndEmployerById($notificationDetail->employer_id));
+                            $brokerList[$notificationDetail->employer_id] = $brokerId;
+                            $this->messagehubRepository->setPushInfo($brokerId);
+                        }
+                        $this->messagehubRepository->setResendData($notificationDetail);
+                        if($request->type != 'email'){
+                            $pushNotificationData = $this->messagehubRepository->dispatchPushNotification($notificationDetail->employee_id, $notificationDetail->employer_id);
+                            if(!empty($pushNotificationData)){
+                                $pushBatchList[] = new sendNotifications($pushNotificationData);
+                            }
+                        }
+
+                        $employeeList[] = ['id'=> $notificationDetail->employee_id, 'email'=> $notificationDetail->employee->email];
+                    }
+
+                    if(!empty($pushBatchList)){
+                        Bus::batch([
+                            $pushBatchList
+                        ])->then(function (Batch $batch) {
+                        })->onQueue('push_notification_queue')
+                        ->name('push_notification_queue')->dispatch();
+                    }
                 }
 
                 if($request->type == 'email'){
@@ -267,6 +287,7 @@ class MessagehubManager
                 $response = $s3Service->uploadFile($filePath, 's3', $input);
                 if($response['status_code'] == 200){
                     $this->messagehubRepository->setThumbnailPath($response['file_url']);
+                    $thumbnail_path = $response['file_url'];
                 }
             }else{
                 $thumbnail_path = '';
@@ -303,17 +324,19 @@ class MessagehubManager
         try{
             $message_id = $data['message_id'];
             Log::info('Message Data : '.json_encode($data));
-            $fcm_key = $data['fcm_key'];
+            //$fcm_key = $data['fcm_key'];
 
             //Get badge count // Add one for the new message
-            $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + $this->unreadOldNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + 1;
-            if(isset($data['is_resend']) && $data['is_resend']){
+            $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + $this->unreadOldNotificationMessages($data['employee_id'],date('Y-m-d', 0));
+            
+            if(isset($data['is_resend']) && $data['is_resend'] || (isset($data['isCommentOrReply']) && $data['isCommentOrReply'])){
                 $logID  = $data['push_message_id']; 
             }else{
-            $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
-            $unreadCount = $unreadCount + 1;
+                $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
+                $unreadCount = $unreadCount + 1;
             }
-            $this->sendNotification($data, $logID, $unreadCount);
+
+            $this->sendNotification($data, $logID, $message_id, $unreadCount);
         }catch(Exception $e){
             Log::error($e);
         }
@@ -324,7 +347,7 @@ class MessagehubManager
      * @param array $data, variable $logID $unreadCount
      * @return 
      */
-    public function sendNotification($data, $logID, $unreadCount)
+    public function sendNotification($data, $logID, $message_id, $unreadCount)
     {
         try {
 
@@ -334,7 +357,7 @@ class MessagehubManager
 
             //If the user is from flutter app
             if(isset($data['is_flutter']) && $data['is_flutter'] == 1){
-                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID);
+                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$message_id);
                 Log::info(json_encode($fcmPush));
                 $is_success = $fcmPush['is_success'];
                 $exception_message = $fcmPush['exception_message'];
@@ -348,7 +371,7 @@ class MessagehubManager
 
                         $iosPayload = array('badge' => $unreadCount,'custom' => array('customData' => array('notification_id' => $logID)));
                         $app_store_target = $data['app_store_target'];
-                        extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$logID,$pushMessage,$data['ios_certificate_file'], $data, $comment_type));
+                        extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$message_id,$pushMessage,$data['ios_certificate_file'], $data, $comment_type));
 
                         $is_success = $status==200?1:0;
                         $exception_message = $message;
@@ -356,13 +379,13 @@ class MessagehubManager
                     catch(Exception $e){
                         Log::error(' apn error'.$e->getMessage());
                         //If exception occurred, then hit FCM for the old live apps.
-                    $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID,$comment_type);
+                    $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$message_id,$comment_type);
                         Log::info('--ios fcm push--'.json_encode($fcmPush));
                         $is_success = $fcmPush['is_success'];
                         $exception_message = $fcmPush['exception_message'];
                     }
                 }else{//For android hit fcm push notification
-                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$logID,$comment_type);
+                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$message_id,$comment_type);
                     Log::info(json_encode($fcmPush));
                     $is_success = $fcmPush['is_success'];
                     $exception_message = $fcmPush['exception_message'];
@@ -376,8 +399,11 @@ class MessagehubManager
                     'updated_at'=>Carbon::now()
                     );
 
-            $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
             Log::error('--exception_message--'.$exception_message);
+
+            if(!(isset($data['isCommentOrReply']) && $data['isCommentOrReply'])){
+                $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
+            }
 
             $elasticData = [
                     "userId" => $data['employee_id'],
@@ -530,9 +556,9 @@ class MessagehubManager
      * Return Broker Id and Employer Id of given employer id from admin/broker  or loggedin user
      *
      */
-    public function getBrokerAndEmployerId($role)
+    public function getBrokerAndEmployerId($role, $userId = '', $refererId = '', $brokerId = '')
     {
-        return $this->messagehubRepository->getBrokerAndEmployerId($role);
+        return $this->messagehubRepository->getBrokerAndEmployerId($role, $userId, $refererId, $brokerId);
     }
 
     public function getBrokerAndEmployerById($employer_id)
@@ -585,7 +611,7 @@ class MessagehubManager
 
             //Remove record from scheduled list
             //$notifications->delete();
-            
+
             if($notifications->recurrence == 'does_not_repeat'){
                 $notifications->status = 'Completed';
                 $notifications->save();
@@ -619,7 +645,7 @@ class MessagehubManager
      */
     public function processNotificationsByApp($apps)
     {
-        foreach ($notifications->apps as $key => $appId) {
+        foreach ($apps as $key => $appId) {
             $brokerIds = $this->getAppBrokers([$appId]);
             if(empty($brokerIds)){
                 continue;
