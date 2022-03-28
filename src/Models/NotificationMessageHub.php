@@ -1,4 +1,4 @@
-<?php
+                                         <?php
 
 namespace Strivebenifits\Messagehub\Models;
 
@@ -97,6 +97,8 @@ class NotificationMessageHub extends Model
                     'target_screen'    => isset($requestData['target_screen'])?$requestData['target_screen']:'oehub',
                     'target_screen_param'    => isset($requestData['target_screen_param'])?$requestData['target_screen_param']:'',
                     'allow_sharing' => isset($requestData['allow_sharing'])?$requestData['allow_sharing']:0,
+                    'sent_from'     => !empty($requestData['sent_from'])?$requestData['sent_from']:'HR Team',
+                    'logo'          => !empty($requestData['logo'])?$requestData['logo']:'',
                     'created_at'    => Carbon::now(),
                     'updated_at'    => Carbon::now()
                    );
@@ -110,6 +112,7 @@ class NotificationMessageHub extends Model
      */
     public function parseMessage($message)
     {
-        return htmlspecialchars(trim(strip_tags($message)));
+        $message = str_replace("&nbsp;"," ",$message);
+        return trim(strip_tags($message,"<user-tag>"));
     }
 }

@@ -256,19 +256,26 @@ class MessagehubManager
      * Store ThumbnailImage
      * return thumbnail_path
      */
-    public function storeImage($request)
+    public function storeImage($request, $fieldName)
     {
         $status_code = 200;
         $thumbnail_path = '';
         $message = '';
 
         //Validate the image
-        if($request->file('thumbnail')){
+        if($request->file($fieldName)){
+            if($fieldName == "thumbnail"){
             $rules  =   array(
                     'thumbnail' => 'mimes:jpg,jpeg,png',
                 );
+            }
+            if($fieldName == "logo"){
+                $rules = array(
+                    'logo' => 'mimes:jpg,jpeg,png',
+                );
+            }
             $v = Validator::make($request->all(), $rules);
-            $input = $request->file('thumbnail');
+            $input = $request->file($fieldName);
             $image_info = getimagesize($input);
             $image_width = $image_info[0];
             $image_height = $image_info[1];
@@ -286,7 +293,9 @@ class MessagehubManager
                 $s3Service = new S3Service;
                 $response = $s3Service->uploadFile($filePath, 's3', $input);
                 if($response['status_code'] == 200){
+                    if($fieldName == "thumbnail"){
                     $this->messagehubRepository->setThumbnailPath($response['file_url']);
+                    }
                     $thumbnail_path = $response['file_url'];
                 }
             }else{

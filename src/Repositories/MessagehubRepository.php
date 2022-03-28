@@ -35,6 +35,7 @@ use Mail;
 use App\Http\Managers\TemplateManager;
 
 use App\Http\Repositories\MappedHashtagRepository;
+use App\Http\Repositories\MappedUserTagRepository;
 use App\Jobs\ProcessBulkPushNotification;
 use App\Jobs\ProcessBulkEmailNotification;
 use App\Jobs\ProcessBulkTextNotification;
@@ -82,6 +83,7 @@ class MessagehubRepository extends BaseRepository
     private TemplateManager $templateManager;
 
     private $mappedHashtagRepository;
+    private $mappedUserTagRepository;
 
     /**
      * MessagehubRepository constructor.
@@ -92,12 +94,14 @@ class MessagehubRepository extends BaseRepository
     public function __construct(NotificationMessageHub $notificationMessage, 
         Connection $eloquentORM,
         TemplateManager $templateManager, 
-        MappedHashtagRepository $mappedHashtagRepository)
+        MappedHashtagRepository $mappedHashtagRepository,
+        MappedUserTagRepository $mappedUserTagRepository)
     {
         parent::__construct($eloquentORM);
         $this->model = $notificationMessage;
         $this->templateManager = $templateManager;
         $this->mappedHashtagRepository = $mappedHashtagRepository;
+        $this->mappedUserTagRepository = $mappedUserTagRepository;
     }
 
     public function setSmsEnabled($value){
@@ -134,6 +138,7 @@ class MessagehubRepository extends BaseRepository
 
         $this->notificationData['created_by'] = !empty($data['created_by'])?$data['created_by']:auth()->user()->id;
         $this->notificationData['created_as'] = !empty($data['created_as'])?$data['created_as']:getEmployerId();
+        $this->notificationData['logo'] = !empty($data['logo_path'])?$data['logo_path']:'';
 
         if(!empty($data['thumbnail_path'])){
             $this->setThumbnailPath($data['thumbnail_path']);
@@ -429,7 +434,6 @@ class MessagehubRepository extends BaseRepository
                     $is_flutter  = $device_details->is_flutter;
                 }
             }
-
             if($this->isResend){
                 $messageId = $this->notificationData['id'];
                 $pushMessageId = $this->resendData['id'];
@@ -642,7 +646,7 @@ class MessagehubRepository extends BaseRepository
             $this->notificationIds[$this->notificationType]['messageId'][$employerId] = $notificationMessageId;
 
             if($mapping){
-                $this->addMessageMappingData($notificationMessageId);
+                $this->addMessageMappingData($notificationMessageId, $employerId);
             }
         }
 
@@ -654,16 +658,28 @@ class MessagehubRepository extends BaseRepository
      * @param $notificationMessageId
      * @return MessageId
      */
-    public function addMessageMappingData($notificationMessageId)
+    public function addMessageMappingData($notificationMessageId, $employerId)
     {
+        try {
         $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
         $mappedId = MessageMapping::insertGetId($mappingDetails);
 
         //Extract hash tag and  save them
         $hashTagArr = extractHashTag($this->notificationData['message']);
+            if(!empty($hashTagArr)){
         $this->mappedHashtagRepository->manageCommentHashtag($hashTagArr, $mappedId);
+            }
+
+            //Extract tagged user and save them
+            $userTagArr = extractUserTag($this->notificationData['message']);
+            if(!empty($userTagArr)){
+                $this->mappedUserTagRepository->manageCommentUsertag($userTagArr, $mappedId, $notificationMessageId, $employerId);
+            }
 
         $this->model::where(['id' => $notificationMessageId])->update(['mapped_id' => $mappedId]);
+        } catch (Exception $e) {
+            Log::error("Message Mapping Log: ".$e);
+        }
     }
 
     public function getEmployeeBySentType($employerId = '')
@@ -766,6 +782,8 @@ class MessagehubRepository extends BaseRepository
                 $fcmDataArr['apns'] = ['payload' => ['aps'=>['badge'=>$unreadCount,'contentAvailable' => true]]];
                 
                 $fcmDataArr['data']['comment_type'] = $comment_type;
+
+                Log::info("FCM DATA: ".json_encode($fcmDataArr));
 
                 $fcmData->setPayload($fcmDataArr);
                 $client -> build($recipient, $notification, $fcmData);
@@ -892,7 +910,10 @@ class MessagehubRepository extends BaseRepository
             $data['created_by'] = $this->notificationData['created_by'];
             $data['created_as'] = $this->notificationData['created_as'];
             $data['thumbnail'] = $this->thumbnailPath;
+            $data['logo'] = $this->notificationData['logo'];
             $data['notification_type'] = $this->notificationType;
+            unset($data['logo_path']);
+            unset($data['thumbnail_path']);
 
             $schedule_datetime =  explode(" ",$this->notificationData['schedule_datetime']);
 
