@@ -264,16 +264,9 @@ class MessagehubManager
 
         //Validate the image
         if($request->file($fieldName)){
-            if($fieldName == "thumbnail"){
             $rules  =   array(
-                    'thumbnail' => 'mimes:jpg,jpeg,png',
+                $fieldName => 'mimes:jpg,jpeg,png',
                 );
-            }
-            if($fieldName == "logo"){
-                $rules = array(
-                    'logo' => 'mimes:jpg,jpeg,png',
-                );
-            }
             $v = Validator::make($request->all(), $rules);
             $input = $request->file($fieldName);
             $image_info = getimagesize($input);
@@ -304,7 +297,7 @@ class MessagehubManager
                 $message = 'Please upload valid thumbnail image';
             }
         }
-        return ['status_code' => $status_code, 'message' => $message, 'thumbnail_path' => $thumbnail_path];
+        return ['status_code' => $status_code, 'message' => $message, $fieldName.'_path' => $thumbnail_path];
     }
 
     /**
