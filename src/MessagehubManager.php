@@ -604,9 +604,10 @@ class MessagehubManager
     {
         try {
             $this->setNotificationType($notifications->notification_type);
+            $notifications->expiry_date = $this->calculateExpiryForScheduledNotification($notifications);
             $this->setNotificationData($notifications->toArray());
             $this->generateTransactionId();
-           
+
             if (isset($notifications->thumbnail)) {
                 $this->messagehubRepository->setThumbnailPath($notifications->thumbnail);
             }
@@ -862,5 +863,13 @@ class MessagehubManager
         unset($requestData['thumbnail']);
         extract($this->messagehubRepository->updateScheduledNotification($where, $requestData));
         return ['status_code' => $status_code, 'message' => $message];
+    }
+
+    /**
+     * calculateExpiryForScheduledNotification (Single Record)
+     * Return expiry date for schedule notification
+     */
+    public function calculateExpiryForScheduledNotification($notifications){
+        return calculateExpiry($notifications->toArray(), $notifications->next_scheduled_utc_time);
     }
 }

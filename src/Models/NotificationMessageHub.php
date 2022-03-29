@@ -93,7 +93,7 @@ class NotificationMessageHub extends Model
                     'send_type'     => $requestData['send_to'],
                     'filter_value'  => $requestData['send_to'] == 'send_to_filter_list'?$requestData['filterTemplate']:'',
                     'valid_from'    => !empty($requestData['valid_from'])?date('Y-m-d',strtotime($requestData['valid_from'])):Carbon::now(),
-                    'expiry_date'   => !empty($requestData['expiry_date'])?date('Y-m-d',strtotime($requestData['expiry_date'])):'',
+                    'expiry_date'   => !empty($requestData['expiry_date'])?date('Y-m-d H:i:s',strtotime($requestData['expiry_date'])):'',
                     'target_screen'    => isset($requestData['target_screen'])?$requestData['target_screen']:'oehub',
                     'target_screen_param'    => isset($requestData['target_screen_param'])?$requestData['target_screen_param']:'',
                     'allow_sharing' => isset($requestData['allow_sharing'])?$requestData['allow_sharing']:0,
