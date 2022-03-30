@@ -1446,7 +1446,7 @@ class MessagehubRepository extends BaseRepository
      * @param Array $brokers
      * @return Array Employers List
      */
-    public function getEmployerList($brokers, $selectedEmployers=array(), $emails = array())
+    public function getEmployerList($brokers, $selectedEmployers=array(), $emails = array(), $excludeBlockedEmployer = False)
     {
         $employerData = [];
         if(!is_array($brokers)){
@@ -1458,6 +1458,17 @@ class MessagehubRepository extends BaseRepository
                 ->enabled()
                 ->active()
                 ->select('users.id','users.company_name','users.email','users.first_name','users.last_name','users.last_login');
+
+            //Exclude blocekd employees
+            if($excludeBlockedEmployer){
+                $query = $query->leftJoin('notification_blocked_employer', function($join)
+                    {
+                        $join->on('users.id', '=', 'notification_blocked_employer.user_id')
+                            ->whereNull('notification_blocked_employer.deleted_at');
+                    })
+                    ->whereNull('notification_blocked_employer.user_id');
+            }
+
             if($this->sms_enabled == true){
                 $query->textEnabled();
             }
