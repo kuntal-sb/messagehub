@@ -612,6 +612,7 @@ class MessagehubRepository extends BaseRepository
             }
 
             if(method_exists($this->templateManager,'mapEmailTemplateKeywords')){
+                $this->notificationData['email_subject'] = $this->templateManager->mapEmailTemplateKeywords($this->notificationData['email_subject'], $employerId);
                 $this->notificationData['email_body'] = $this->templateManager->mapEmailTemplateKeywords($this->notificationData['email_body'], $employerId);
             }
 
