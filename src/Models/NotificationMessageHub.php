@@ -99,6 +99,8 @@ class NotificationMessageHub extends Model
                     'allow_sharing' => isset($requestData['allow_sharing'])?$requestData['allow_sharing']:0,
                     'sent_from'     => !empty($requestData['sent_from'])?$requestData['sent_from']:'HR Team',
                     'logo'          => !empty($requestData['logo'])?$requestData['logo']:'',
+                    'category_id'    => (isset($requestData['categoryId']))?$requestData['categoryId']:0,
+                    'subcategory_id' => (isset($requestData['subCategoryId']))?$requestData['subCategoryId']:0,
                     'created_at'    => Carbon::now(),
                     'updated_at'    => Carbon::now()
                    );
