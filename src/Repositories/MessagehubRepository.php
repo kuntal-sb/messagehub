@@ -955,7 +955,7 @@ class MessagehubRepository extends BaseRepository
      * prepareRecurringEventData
      * @return set next event date and recurring data
      */
-    public function prepareRecurringEventData(&$eventData)
+    public function prepareRecurringEventData(&$eventData, $timezone = '')
     {
         $eventData['recurrence'] = $eventData['is_repeated'];
         $eventData['repeat_interval'] = $eventData['repeat_interval'];
