@@ -955,11 +955,10 @@ class MessagehubRepository extends BaseRepository
      * prepareRecurringEventData
      * @return set next event date and recurring data
      */
-    public function prepareRecurringEventData(&$eventData, $timezone = '')
+     public function prepareRecurringEventData(&$eventData, $timezone = '')
     {
         $eventData['recurrence'] = $eventData['is_repeated'];
         $eventData['repeat_interval'] = $eventData['repeat_interval'];
-
         switch ($eventData['is_repeated']) {
             case 'every_weekday':
             case 'daily':
@@ -975,7 +974,7 @@ class MessagehubRepository extends BaseRepository
                 }
                 elseif($eventData['custom_repeat_type'] == 'week'){
                     $eventData['recurrence'] = 'weekly';
-                    $eventData['on_specific_days_of_month'] = $eventData['custom_days_of_week'];    
+                    $eventData['on_specific_days_of_month'] = $eventData['custom_days_of_week'];
                 }
                 else if($eventData['custom_repeat_type'] == 'month'){
                     $eventData['recurrence'] = 'monthly';
@@ -984,7 +983,7 @@ class MessagehubRepository extends BaseRepository
                     }else{
                         $eventData['on_specific_sequence'] = $eventData['custom_on_specific_sequence'];
                         $eventData['on_specific_days_of_month'] = $eventData['custom_on_specific_days_of_month'];
-                    }    
+                    }
                 }
                 else if($eventData['custom_repeat_type'] == 'year'){
                     $eventData['recurrence'] = 'yearly';
@@ -995,17 +994,20 @@ class MessagehubRepository extends BaseRepository
                         $eventData['on_specific_sequence'] = $eventData['custom_on_specific_sequence'];
                         $eventData['on_specific_days_of_month'] = $eventData['custom_on_specific_days_of_month'];
                         $eventData['on_specific_month'] = $eventData['custom_on_the_specific_month'];
-                    }                    
+                    }
                 }
                 break;
             default:
                 // code...
                 break;
         }
-
         if($eventData['is_repeated'] != 'does_not_repeat'){
             $eventData['next_at'] = nextEventOccurance($eventData, $eventData['schedule_datetime']);
+            if($timezone){
+                $eventData['next_scheduled_utc_time'] = convertToUtc($timezone, $eventData['next_at']);
+            }else{
             $eventData['next_scheduled_utc_time'] = convertToUtc($this->notificationData['timezone'], $eventData['next_at']);
+            }
         }
         else{
             unset($eventData['schedule_end_datetime']);
