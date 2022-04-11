@@ -1638,6 +1638,12 @@ class MessagehubRepository extends BaseRepository
             if ($this->thumbnailPath) {
                 $data['thumbnail'] = $this->thumbnailPath;
             }
+            $schedule_datetime =  explode(" ",$data['schedule_datetime']);
+            $data['schedule_time'] = $schedule_datetime[1]." ".$schedule_datetime[2];
+            $data['schedule_date'] = date('Y-m-d',strtotime($schedule_datetime[0]));
+            $data['scheduled_utc_time'] = convertToUtc($data['timezone'], $data['schedule_date'].' '.$data['schedule_time']);
+            $this->prepareRecurringEventData($data, $data['timezone']);
+
             $notificationSchedule = NotificationSchedule::where($where)->update($data);
             if ($notificationSchedule) {
                 $response = ['status_code' => 200, 'message' => 'Schedule updated successfully'];
