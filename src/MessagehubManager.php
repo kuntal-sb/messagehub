@@ -854,8 +854,6 @@ class MessagehubManager
     public function updateScheduledNotification($requestData)
     {
         $where = ['_id' => $requestData['scheduleId']];
-        unset($requestData['thumbnail']);
-
         if(!empty($requestData['logo'])) {
             if(isset($requestData['logo_stored_path'])){
                 unset($requestData['logo']);
@@ -865,7 +863,15 @@ class MessagehubManager
         }else{
             $requestData['logo'] = '';
         }
-
+        if(!empty($requestData['thumbnail'])) {
+            if(isset($requestData['thumbnail_stored_path'])){
+                unset($requestData['thumbnail']);
+                $requestData['thumbnail'] = $requestData['thumbnail_stored_path'];
+                unset($requestData['thumbnail_stored_path']);
+            }
+        }else{
+            $requestData['thumbnail'] = '';
+        }
         extract($this->messagehubRepository->updateScheduledNotification($where, $requestData));
         return ['status_code' => $status_code, 'message' => $message];
     }
