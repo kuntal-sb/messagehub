@@ -679,8 +679,14 @@ class MessagehubRepository extends BaseRepository
             //Extract tagged user and save them
             $userTagArr = extractUserTag($this->notificationData['message']);
             if(!empty($userTagArr)){
-                $this->mappedUserTagRepository->manageCommentUsertag($userTagArr, $mappedId, $notificationMessageId, $employerId);
+                $employeeListTagAll = [];
+                if(in_array(Config::get('constants.MESSAGE_TAG_ALL_USER'), $userIdTagArr)){
+                    $type = 'in-app';
+                    $employeeListTagAll = $this->getEmployeeList($type, $employerId);
+                }
+                $this->mappedUserTagRepository->manageCommentUsertag($userTagArr, $mappedId, $notificationMessageId, $employeeListTagAll);
             }
+
         } catch (Exception $e) {
             Log::error("Message Mapping Log: ".$e);
         }
