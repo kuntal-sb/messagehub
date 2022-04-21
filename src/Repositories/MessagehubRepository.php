@@ -187,6 +187,9 @@ class MessagehubRepository extends BaseRepository
             case config('role.HR'):
                 $employers = [User::where('id',$userid)->select('referer_id')->first()->referer_id];
                 break;
+            case config('role.BROKEREMPLOYEE'):
+                $employers = [Session::get('employerId')];
+                break;
             default:
                 if(loggedinAsEmployer()){
                     $employers = [getEmployerId()];
@@ -662,13 +665,15 @@ class MessagehubRepository extends BaseRepository
     public function addMessageMappingData($notificationMessageId, $employerId)
     {
         try {
-        $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
-        $mappedId = MessageMapping::insertGetId($mappingDetails);
+            $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
+            $mappedId = MessageMapping::insertGetId($mappingDetails);
 
-        //Extract hash tag and  save them
-        $hashTagArr = extractHashTag($this->notificationData['message']);
+            $this->model::where(['id' => $notificationMessageId])->update(['mapped_id' => $mappedId]);
+
+            //Extract hash tag and  save them
+            $hashTagArr = extractHashTag($this->notificationData['message']);
             if(!empty($hashTagArr)){
-        $this->mappedHashtagRepository->manageCommentHashtag($hashTagArr, $mappedId);
+                $this->mappedHashtagRepository->manageCommentHashtag($hashTagArr, $mappedId);
             }
 
             //Extract tagged user and save them
@@ -676,8 +681,6 @@ class MessagehubRepository extends BaseRepository
             if(!empty($userTagArr)){
                 $this->mappedUserTagRepository->manageCommentUsertag($userTagArr, $mappedId, $notificationMessageId, $employerId);
             }
-
-        $this->model::where(['id' => $notificationMessageId])->update(['mapped_id' => $mappedId]);
         } catch (Exception $e) {
             Log::error("Message Mapping Log: ".$e);
         }
@@ -1276,8 +1279,8 @@ class MessagehubRepository extends BaseRepository
                 $broker_id = ($userId)?:Auth::user()->id;
             break;
             case config('role.BROKEREMPLOYEE'):
-                $employer_id = json_decode($employer_id);
-                $broker_id = ($refererId)?:Auth::user()->id;
+                $employer_id = Session::get('employerId');
+                $broker_id = ($refererId)?:Auth::user()->referer_id;
             break;
             default:
                 $employer_id = ($userId)?:Auth::user()->id;
