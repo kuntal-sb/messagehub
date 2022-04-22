@@ -477,7 +477,7 @@ class MessagehubRepository extends BaseRepository
             }else{//user has no device so make entry into notifications_message_hub_push_log with failed status when not resending message
                 if(! $this->isResend){
                     $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $messageId,'message' => (string) $this->notificationData['message'],'title' => $this->notificationData['title'],'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'],'exception_message'=>'App not Downloaded' );
-                    $messageStatus = 'failed';
+                    $messageStatus = 'App Not Downloaded';
 
                     $logID = $this->insertNotificationLog($send_data, $messageId, $messageStatus);
                 }
@@ -1123,7 +1123,7 @@ class MessagehubRepository extends BaseRepository
     {
         return DB::table('notifications_message_hub_push_log')
             ->selectRaw(
-                "sum(case when STATUS = 'sent' then 1 else 0 end) as sent, sum(case when STATUS = 'opened' then 1 else 0 end) as open,sum(case when STATUS = 'read' then 1 else 0 end) as `read`, sum(case when STATUS = 'failed' then 1 else 0 end) as failed"
+                "sum(case when STATUS = 'sent' then 1 else 0 end) as sent, sum(case when STATUS = 'opened' then 1 else 0 end) as open,sum(case when STATUS = 'read' then 1 else 0 end) as `read`, sum(case when STATUS = 'failed' then 1 else 0 end) as failed, sum(case when STATUS = 'App Not Downloaded' then 1 else 0 end) as app_not_downloaded"
             )
             ->where('message_id', $message_id)->first();
     }
