@@ -179,10 +179,10 @@ class MessagehubManager
         $notificationDetails = [];
         switch ($request->action) {
             case 'failed':
-                $notificationDetails = $notification->pushNotifications()->where(['status' => 'failed']);
+                $notificationDetails = $notification->pushNotifications()->whereIn('status', ['failed', 'App Not Downloaded']);
                 break;
             case 'not-opened':
-                $notificationDetails = $notification->pushNotifications()->where('status', '!=','failed')->where('open_status', 0)->where('delivered_status', 0);
+                $notificationDetails = $notification->pushNotifications()->whereNotIn('status',['failed', 'App Not Downloaded'])->where('open_status', 0)->where('delivered_status', 0);
                 break;
             case 'all':
                 if($request->type == 'email'){
