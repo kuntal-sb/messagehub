@@ -42,6 +42,7 @@ use App\Jobs\ProcessBulkTextNotification;
 
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
+use Strivebenifits\Messagehub\Models\PinnedMessages;
 
 /**
  * Class MessagehubRepository
@@ -442,6 +443,20 @@ class MessagehubRepository extends BaseRepository
                 $pushMessageId = $this->resendData['id'];
             }else{
                 $messageId = $this->addNotification($employerId, true);
+                if($this->notificationData['pin_message'] == 1){
+                    $checkPin = PinnedMessages::where('message_id',$messageId)->first();
+                    if(is_null($checkPin)){
+                        $pinnedMessages = PinnedMessages::where('employer_id',$employerId)
+                                            ->whereNotNull('pin_at')->orderBy('pin_at','ASC')
+                                            ->get();
+                        //Check if user pinned more than configured limited messages
+                        if(count($pinnedMessages) == Config('constants.LIMIT_PIN_MESSAGE')){
+                            PinnedMessages::where('message_id',$pinnedMessages[0]->message_id)->delete();
+                        }
+                        $pinData = ['message_id' => $messageId,'employer_id' => $employerId,'pin_at' => Carbon::now()];
+                        PinnedMessages::insert($pinData);
+                    }
+                }
                 $pushMessageId = '';
             }
             $pushNotificationData = array();
