@@ -443,7 +443,7 @@ class MessagehubRepository extends BaseRepository
                 $pushMessageId = $this->resendData['id'];
             }else{
                 $messageId = $this->addNotification($employerId, true);
-                if($this->notificationData['pin_message'] == 1){
+                if(isset($this->notificationData['pin_message']) && $this->notificationData['pin_message'] == 1){
                     $checkPin = PinnedMessages::where('message_id',$messageId)->first();
                     if(is_null($checkPin)){
                         $pinnedMessages = PinnedMessages::where('employer_id',$employerId)
