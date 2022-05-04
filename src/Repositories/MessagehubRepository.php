@@ -979,7 +979,7 @@ class MessagehubRepository extends BaseRepository
      * prepareRecurringEventData
      * @return set next event date and recurring data
      */
-     public function prepareRecurringEventData(&$eventData, $timezone = '')
+    public function prepareRecurringEventData(&$eventData, $timezone = '')
     {
         $eventData['recurrence'] = $eventData['is_repeated'];
         $eventData['repeat_interval'] = $eventData['repeat_interval'];
@@ -1026,11 +1026,16 @@ class MessagehubRepository extends BaseRepository
                 break;
         }
         if($eventData['is_repeated'] != 'does_not_repeat'){
-            $eventData['next_at'] = nextEventOccurance($eventData, $eventData['schedule_datetime']);
-            if($timezone){
-                $eventData['next_scheduled_utc_time'] = convertToUtc($timezone, $eventData['next_at']);
+            $eventData['next_at'] = nextEventOccurance($eventData, $eventData['schedule_datetime'], true);
+            if(strtotime($eventData['next_at']) > strtotime($eventData['schedule_end_datetime'])){
+                $eventData['next_at'] = '';
+                $eventData['next_scheduled_utc_time'] = '';
             }else{
-            $eventData['next_scheduled_utc_time'] = convertToUtc($this->notificationData['timezone'], $eventData['next_at']);
+                if($timezone){
+                    $eventData['next_scheduled_utc_time'] = convertToUtc($timezone, $eventData['next_at']);
+                }else{
+                    $eventData['next_scheduled_utc_time'] = convertToUtc($this->notificationData['timezone'], $eventData['next_at']);
+                }
             }
         }
         else{
