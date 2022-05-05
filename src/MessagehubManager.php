@@ -598,13 +598,14 @@ class MessagehubManager
         try {
             $this->setNotificationType($notifications->notification_type);
             $notifications->expiry_date = $this->calculateExpiryForScheduledNotification($notifications);
+            if(!empty($notifications->logo)){
+                $notifications->logo_path = $notifications->logo;
+            }
+            if(!empty($notifications->thumbnail)){
+                $notifications->thumbnail_path = $notifications->thumbnail;
+            }
             $this->setNotificationData($notifications->toArray());
             $this->generateTransactionId();
-
-            if (isset($notifications->thumbnail)) {
-                $this->messagehubRepository->setThumbnailPath($notifications->thumbnail);
-            }
-
             if($notifications->sent_type == 'choose-app' && !empty($notifications->apps)){// If schedule by admin app wise
                 $this->processNotificationsByApp($notifications->apps);
             }else{
@@ -844,7 +845,7 @@ class MessagehubManager
             }
             return $notification;
         } catch (Exception $e) {
-                Log::error($e);
+            Log::error($e);
         }
     }
 
@@ -864,6 +865,8 @@ class MessagehubManager
             }
         }else{
             $requestData['logo'] = '';
+            $requestData['logo_path'] = '';
+            $requestData['logo_stored_path'] = '';
         }
         if(!empty($requestData['thumbnail'])) {
             if(isset($requestData['thumbnail_stored_path'])){
@@ -873,6 +876,8 @@ class MessagehubManager
             }
         }else{
             $requestData['thumbnail'] = '';
+            $requestData['thumbnail_path'] = '';
+            $requestData['thumbnail_stored_path'] = '';
         }
         extract($this->messagehubRepository->updateScheduledNotification($where, $requestData));
         return ['status_code' => $status_code, 'message' => $message];

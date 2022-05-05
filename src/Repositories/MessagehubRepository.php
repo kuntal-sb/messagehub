@@ -140,6 +140,7 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['created_by'] = !empty($data['created_by'])?$data['created_by']:auth()->user()->id;
         $this->notificationData['created_as'] = !empty($data['created_as'])?$data['created_as']:getEmployerId();
         $this->notificationData['logo'] = !empty($data['logo_path'])?$data['logo_path']:'';
+        $this->notificationData['thumbnail'] = !empty($data['thumbnail_path'])?$data['thumbnail_path']:'';
 
         if(!empty($data['thumbnail_path'])){
             $this->setThumbnailPath($data['thumbnail_path']);
