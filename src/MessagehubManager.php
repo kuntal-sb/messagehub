@@ -890,4 +890,13 @@ class MessagehubManager
     public function calculateExpiryForScheduledNotification($notifications){
         return calculateExpiry($notifications->toArray(), $notifications->next_scheduled_utc_time);
     }
+
+    /**
+     * updateMessage
+     *
+     * @param  array $requestData
+     */
+    public function updateMessage($request){
+        return $this->messagehubRepository->updateMessage($request);
+    }
 }

@@ -245,7 +245,7 @@ class MessagehubRepository extends BaseRepository
 
         $notifications = $notifications->whereIn('notifications_message_hub.id', $messageIds);
 
-        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value'])->orderBy('created_at', 'desc');
+        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.expiry_date'])->orderBy('created_at', 'desc');
         return $notifications;
     }
 
@@ -1688,5 +1688,25 @@ class MessagehubRepository extends BaseRepository
             $response = ['status_code' => 400, 'message' => $e->getMessage()];
         }
         return $response;
+    }
+
+    /*
+     * Update notification message
+     * @param request
+     * @return
+     */
+    public function updateMessage($request){
+        try{
+            $data = ['title' => $request->title,
+                    'message' => $request->message,
+                    'expiry_date'=> ($request->expiry_date!=='')?date('Y-m-d',strtotime($request->expiry_date)):''];
+            $id = base64_decode($request->id);
+            NotificationMessageHub::where('id',$id)->update($data);
+            return $response = ['status_code' => 200,'message' => 'Message updated successfully'];
+        }
+        catch (Exception $e) {
+            Log::error($e);
+            return $response = ['status_code' => 400, 'message' => $e->getMessage()];
+        }
     }
 }
