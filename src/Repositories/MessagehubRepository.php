@@ -1698,7 +1698,7 @@ class MessagehubRepository extends BaseRepository
     public function updateMessage($request){
         try{
             $data = ['title' => $request->title,
-                    'message' => $request->message,
+                    'message' => (!empty($request->message))?$this->model->parseMessage($request->message):'',
                     'expiry_date'=> ($request->expiry_date!=='')?date('Y-m-d',strtotime($request->expiry_date)):''];
             $id = base64_decode($request->id);
             NotificationMessageHub::where('id',$id)->update($data);
