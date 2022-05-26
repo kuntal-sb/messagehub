@@ -37,7 +37,7 @@ class TwilioManager
      * @return false
      * @throws Exception
      */
-    public function sendMessageHubSMS($message,$messageId,$employerId, $employeeData)
+    public function sendMessageHubSMS($message,$messageId,$employerId, $employeeData, $appNotDownloaded = true)
     {
         $number = $employeeData['phone_number'];
         $employeeId = $employeeData['id'];
@@ -68,7 +68,9 @@ class TwilioManager
 
                 Log::info('Twilio '.$status.' : '.json_encode($response));
 
-                $this->twilioRepository->createLog(new TwilioResponseEntity($response, $employeeId, $employerId, $status, $number,$messageId,'message-hub', $exceptionMessage));
+                if(!$appNotDownloaded) {
+                    $this->twilioRepository->createLog(new TwilioResponseEntity($response, $employeeId, $employerId, $status, $number,$messageId,'message-hub', $exceptionMessage));
+                }
             }
 
         } catch (Exception $e) {

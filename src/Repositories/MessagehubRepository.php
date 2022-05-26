@@ -39,6 +39,8 @@ use App\Http\Repositories\MappedUserTagRepository;
 use App\Jobs\ProcessBulkPushNotification;
 use App\Jobs\ProcessBulkEmailNotification;
 use App\Jobs\ProcessBulkTextNotification;
+use App\Jobs\ProcessBulkEmailNotificationAppNotDownloaded;
+use App\Jobs\ProcessBulkTextNotificationAppNotDownloaded;
 
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
@@ -496,6 +498,10 @@ class MessagehubRepository extends BaseRepository
                     $messageStatus = 'App Not Downloaded';
 
                     $logID = $this->insertNotificationLog($send_data, $messageId, $messageStatus);
+
+                    // Send Email/Text message to users who has not downloaded app
+                   ProcessBulkEmailNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
+                   ProcessBulkTextNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData)
                 }
             }
 
@@ -536,10 +542,10 @@ class MessagehubRepository extends BaseRepository
      * @param
      * @return
      */
-    public function dispatchTextNotification($employees,$employerId)
+    public function dispatchTextNotification($employees,$employerId,$appNotDownloaded = false)
     {
         try {
-            $notificationMessageId = $this->addNotification($employerId);
+            $notificationMessageId = !$appNotDownloaded ? $this->addNotification($employerId) : null;
             $chunkEmployeeList = array_chunk($employees, 20);
 
             foreach($chunkEmployeeList as $employeeList){
@@ -548,7 +554,9 @@ class MessagehubRepository extends BaseRepository
                     $smsData = ['employee' => $employee,
                             'employer_id' => $employerId,
                             'message' => $this->notificationData['message'],
-                            'message_id' => $notificationMessageId];               
+                            'message_id' => $notificationMessageId,
+                            'app_not_downloaded' => $appNotDownloaded
+                        ];               
                         $batchList[] = new sendSms($smsData);
                 }
                 if(!empty($batchList)){
@@ -1707,6 +1715,21 @@ class MessagehubRepository extends BaseRepository
         catch (Exception $e) {
             Log::error($e);
             return $response = ['status_code' => 400, 'message' => $e->getMessage()];
+        }
+    }
+
+    /**
+     * Send Email notification to users who has not downloaded app
+     * @param
+     * @return
+     */
+    public function dispatchEmailNotificationForAppNotDownloaded($employees, $emailData)
+    {
+        try {
+            $message = (new AppNotDownloadedEmail($emailData))->onQueue('email_queue');
+            Mail::to($employees['email'])->queue($message);
+        } catch (Exception $e) {
+            Log::error($e);
         }
     }
 }
