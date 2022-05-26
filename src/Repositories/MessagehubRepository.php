@@ -501,7 +501,7 @@ class MessagehubRepository extends BaseRepository
 
                     // Send Email/Text message to users who has not downloaded app
                    ProcessBulkEmailNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
-                   ProcessBulkTextNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData)
+                   ProcessBulkTextNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
                 }
             }
 
