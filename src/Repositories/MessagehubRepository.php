@@ -41,6 +41,7 @@ use App\Jobs\ProcessBulkEmailNotification;
 use App\Jobs\ProcessBulkTextNotification;
 use App\Jobs\ProcessBulkEmailNotificationAppNotDownloaded;
 use App\Jobs\ProcessBulkTextNotificationAppNotDownloaded;
+use App\Mail\AppNotDownloadedEmail;
 
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
