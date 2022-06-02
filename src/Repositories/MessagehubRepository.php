@@ -501,8 +501,10 @@ class MessagehubRepository extends BaseRepository
                     $logID = $this->insertNotificationLog($send_data, $messageId, $messageStatus);
 
                     // Send Email/Text message to users who has not downloaded app
-                   ProcessBulkEmailNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
-                   ProcessBulkTextNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
+                    if($deviceToken == ''){
+                        ProcessBulkEmailNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
+                        ProcessBulkTextNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
+                    }
                 }
             }
 
