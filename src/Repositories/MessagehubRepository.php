@@ -377,6 +377,7 @@ class MessagehubRepository extends BaseRepository
     {
         try {
             $filterTemplate = '';
+            $appInstanceIds = [];
 
             if($this->notificationData['send_to'] == 'send_to_all'){
                 $employeeList = [];
@@ -385,6 +386,10 @@ class MessagehubRepository extends BaseRepository
                 $employeeList = [];
 
                 $filterTemplate = $this->notificationData['filterTemplate'];
+            }else if($this->notificationData['send_to'] == 'send_to_app_instances'){
+                $employeeList = [];
+
+                $appInstanceIds = $this->notificationData['appInstance'];
             }else{
                 $employees = $employeeList = $this->notificationData['employees'];
             }
@@ -397,7 +402,7 @@ class MessagehubRepository extends BaseRepository
                 $batchList = [];
                 foreach($employerList as $employerId){
                     if(empty($employeeList)){
-                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate);
+                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds);
                     }
                     $batchList[] = new ProcessBulkPushNotification($brokerId, $employerId, $employees, $this->notificationData);
                 }
@@ -586,6 +591,7 @@ class MessagehubRepository extends BaseRepository
     {
         try {
             $filterTemplate = '';
+            $appInstanceIds = '';
 
             if($this->notificationData['send_to'] == 'send_to_all'){
                 $employeeList = [];
@@ -594,6 +600,10 @@ class MessagehubRepository extends BaseRepository
                 $employeeList = [];
 
                 $filterTemplate = $this->notificationData['filterTemplate'];
+            }else if($this->notificationData['send_to'] == 'send_to_app_instances'){
+                $employeeList = [];
+
+                $appInstanceIds = $this->notificationData['appInstance'];
             }else{
                 $userRepository = app()->make(UsersRepository::class);
                 $employees = $employeeList = $userRepository->getByWhereIn($this->notificationData['employees'], 'id', [], ['id','email']);
@@ -605,7 +615,7 @@ class MessagehubRepository extends BaseRepository
                 $batchList = [];
                 foreach($employerList as $employerId){
                     if(empty($employeeList)){
-                        $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate);
+                        $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate, $appInstanceIds);
                     }
                     $batchList[] = new ProcessBulkEmailNotification($employerId, $employees, $this->notificationData);
                 }
@@ -726,6 +736,8 @@ class MessagehubRepository extends BaseRepository
         }
         else if(in_array($this->notificationData['send_to'], ['send_to_filter_list'])){
             return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate']);
+        }else if(in_array($this->notificationData['send_to'], ['send_to_app_instances'])){
+            return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate'], $this->notificationData['appInstance']);
         }else{
             return $this->getPhoneNumberByUser($this->notificationData['employees']);
         }
@@ -1377,7 +1389,7 @@ class MessagehubRepository extends BaseRepository
      * @param Array $employers, for which we need to get data
      * @return Array $selectedEmployees
      */
-    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '')
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds = [])
     {
         $employeeData = [];
         if(!is_array($employers)){
@@ -1395,6 +1407,10 @@ class MessagehubRepository extends BaseRepository
                         ->select('users.id','users.first_name','users.last_name','users.email','users.created_at','users.last_login');
             if(!empty($selectedEmployees)){
                 $query = $query->whereIn('users.id',$selectedEmployees);
+            }
+
+            if(!empty($appInstanceIds)){
+                $query = $query->join('app_instance_assigned','app_instance_assigned.user_id','=','users.id')->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
             }
             //filter record based on email if provided
             if(!empty($emails)){
@@ -1441,7 +1457,7 @@ class MessagehubRepository extends BaseRepository
      * @param Array $employers, for which we need to get data
      * @return int $EmployeesCount
      */
-    public function getEmployeeCount($type, $employers, $filterTemplate = '')
+    public function getEmployeeCount($type, $employers, $filterTemplate = '', $appInstanceIds = [])
     {
         $employeeData = [];
         if(!is_array($employers)){
@@ -1456,6 +1472,10 @@ class MessagehubRepository extends BaseRepository
                     ->enabled()
                     ->active()
                     ->select('users.id');
+
+        if (!empty($appInstanceIds)) {
+            $query = $query->join('app_instance_assigned', 'app_instance_assigned.user_id', '=', 'users.id')->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+        }
 
         //Get only those users who has downloaded app
         $query->when(in_array($type,[config('messagehub.notification.type.INAPP')]), function ($q) {

@@ -568,14 +568,14 @@ class MessagehubManager
         return $this->messagehubRepository->getBrokerAndEmployerById($employer_id);
     }
 
-    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '')
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds =[])
     {
-        return $this->messagehubRepository->getEmployeeList($type, $employers, $selectedEmployees, $emails, $filterTemplate);
+        return $this->messagehubRepository->getEmployeeList($type, $employers, $selectedEmployees, $emails, $filterTemplate, $appInstanceIds);
     }
 
-    public function getEmployeeCount($type, $employers, $filterTemplate = '')
+    public function getEmployeeCount($type, $employers, $filterTemplate = '', $appInstanceIds = [])
     {
-        return $this->messagehubRepository->getEmployeeCount($type, $employers, $filterTemplate);
+        return $this->messagehubRepository->getEmployeeCount($type, $employers, $filterTemplate, $appInstanceIds);
     }
 
     public function getEmployerList($brokerList, $selectedEmployers = array(), $sms_enabled = false, $excludeBlockedEmployer = False)
