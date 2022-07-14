@@ -134,7 +134,7 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['email_body'] = !empty($this->notificationData['email_body'])?$this->notificationData['email_body']:'';
         $this->notificationData['target_screen'] = !empty($this->notificationData['target_screen'])?$this->notificationData['target_screen']:'';
         $this->notificationData['target_screen_param'] = !empty($this->notificationData['target_screen_param'])?$this->notificationData['target_screen_param']:'';
-        $this->notificationData['filterTemplate'] = !empty($data['send_to'])?(($data['send_to'] == 'send_to_filter_list')?$data['filterTemplate']:'')?'';
+        $this->notificationData['filterTemplate'] = !empty($data['send_to'])?($data['send_to'] == 'send_to_filter_list'?$data['filterTemplate']:''):'';
 
 
         if(isset($data['id']) && $data['notification_type'] == 'email'){
