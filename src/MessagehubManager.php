@@ -90,6 +90,36 @@ class MessagehubManager
         }
     }
 
+    /**
+     * return a listing of phone number.
+     *
+     * @param Array $users
+     * @return Array
+     */
+    public function getPhoneNumberByUser($users)
+    {
+        try {
+            return $this->messagehubRepository->getPhoneNumberByUser($users);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+        }
+    }
+
+    /**
+     * get selected filtertemplate details
+     * 
+     * @param filtertemplateId
+     * @return
+     */
+    public function getFilterTemplateName($filterTemplateId)
+    {
+        try {
+            return $this->messagehubRepository->getFilterTemplateName($filterTemplateId);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+        }
+    }
+
     public function prepareReportData($request)
     {
         if(!empty($request->daterange)){

@@ -134,6 +134,7 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['email_body'] = !empty($this->notificationData['email_body'])?$this->notificationData['email_body']:'';
         $this->notificationData['target_screen'] = !empty($this->notificationData['target_screen'])?$this->notificationData['target_screen']:'';
         $this->notificationData['target_screen_param'] = !empty($this->notificationData['target_screen_param'])?$this->notificationData['target_screen_param']:'';
+        $this->notificationData['filterTemplate'] = !empty($data['send_to'])(($data['send_to'] == 'send_to_filter_list')?$data['filterTemplate']:'')?:'';
 
         if(isset($data['id']) && $data['notification_type'] == 'email'){
             $this->notificationData['email_subject'] = $data['title'];
@@ -1751,6 +1752,25 @@ class MessagehubRepository extends BaseRepository
         try {
             $message = (new AppNotDownloadedEmail($emailData))->onQueue('email_queue');
             Mail::to($employees['email'])->queue($message);
+        } catch (Exception $e) {
+            Log::error($e);
+        }
+    }
+
+    /**
+     * get selected filtertemplate name by using its id
+     * @param id
+     * @return 
+     **/
+    public function getFilterTemplateName($filterTemplateId)
+    {
+        try {
+            if (!empty($filterTemplateId)) {
+                return DB::table('filter_template')
+                            ->where('id',$filterTemplateId)
+                            ->select('name')
+                            ->first();
+            }
         } catch (Exception $e) {
             Log::error($e);
         }
