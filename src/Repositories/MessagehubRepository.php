@@ -195,7 +195,8 @@ class MessagehubRepository extends BaseRepository
                 $employers = [User::where('id',$userid)->select('referer_id')->first()->referer_id];
                 break;
             case config('role.BROKEREMPLOYEE'):
-                $employers = [Session::get('employerId')];
+                //$employers = [Session::get('employerId')];
+                $employers = array_column($this->getEmployerList($userid), 'id');
                 break;
             default:
                 if(loggedinAsEmployer()){
@@ -1519,11 +1520,21 @@ class MessagehubRepository extends BaseRepository
             $brokers = [$brokers];
         }
         foreach($brokers as $brokerId){
+            if(Session::get('role') === config('role.BROKEREMPLOYEE')){ 
             $query = User::join('employerdetails', 'users.id', '=', 'employerdetails.user_id')
+                    ->join('broker_employee_cms_mapping', 'users.id','=','broker_employee_cms_mapping.employer_id') 
+                    ->where('broker_employee_id','=',Auth::user()->id)  
                 ->where('users.referer_id', $brokerId)
                 ->enabled()
                 ->active()
                 ->select('users.id','users.company_name','users.email','users.first_name','users.last_name','users.last_login');
+            }else{  
+                $query = User::join('employerdetails', 'users.id', '=', 'employerdetails.user_id')  
+                    ->where('users.referer_id', $brokerId)  
+                    ->enabled() 
+                    ->active()  
+                    ->select('users.id','users.company_name','users.email','users.first_name','users.last_name','users.last_login');    
+            }
 
             //Exclude blocekd employees
             if($excludeBlockedEmployer){
