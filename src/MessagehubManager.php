@@ -1,4 +1,4 @@
-<?php
+               <?php
 
 namespace Strivebenifits\Messagehub;
 
@@ -252,7 +252,8 @@ class MessagehubManager
                             }
                         }
 
-                        $employeeList[] = ['id'=> $notificationDetail->employee_id, 'email'=> $notificationDetail->employee->email];
+                        $employeeData = $notificationDetail->employee;
+                        $employeeList[] = ['id'=> $notificationDetail->employee_id, 'email'=> $employeeData->email,'username' => $employeeData->username, 'first_name' => $employeeData->first_name, 'last_name' => $employeeData->last_name ];
                     }
 
                     if(!empty($pushBatchList)){

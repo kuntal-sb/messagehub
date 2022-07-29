@@ -609,7 +609,7 @@ class MessagehubRepository extends BaseRepository
                 $appInstanceIds = $this->notificationData['appInstance'];
             }else{
                 $userRepository = app()->make(UsersRepository::class);
-                $employees = $employeeList = $userRepository->getByWhereIn($this->notificationData['employees'], 'id', [], ['id','email']);
+                $employees = $employeeList = $userRepository->getByWhereIn($this->notificationData['employees'], 'id', [], ['id','username','first_name','last_name','email']);
             }
 
             $chunkEmployerList = array_chunk($employerList, 2);
@@ -1413,7 +1413,7 @@ class MessagehubRepository extends BaseRepository
                         ->where('users.referer_id','=',$employer)
                         ->enabled()
                         ->active()
-                        ->select('users.id','users.first_name','users.last_name','users.email','users.created_at','users.last_login');
+                        ->select('users.id','users.username','users.first_name','users.last_name','users.email','users.created_at','users.last_login');
             if(!empty($selectedEmployees)){
                 $query = $query->whereIn('users.id',$selectedEmployees);
             }
