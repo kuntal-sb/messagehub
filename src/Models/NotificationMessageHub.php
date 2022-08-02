@@ -103,6 +103,7 @@ class NotificationMessageHub extends Model
                     'logo'          => !empty($requestData['logo'])?$requestData['logo']:'',
                     'category_id'    => (isset($requestData['categoryId']))?$requestData['categoryId']:0,
                     'subcategory_id' => (isset($requestData['subCategoryId']))?$requestData['subCategoryId']:0,
+                    'userpost_learn_more' => (isset($requestData['allow_learn_more']))?$requestData['allow_learn_more']:0,
                     'created_at'    => Carbon::now(),
                     'updated_at'    => Carbon::now()
                    );

@@ -46,6 +46,7 @@ use App\Mail\AppNotDownloadedEmail;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use Strivebenifits\Messagehub\Models\PinnedMessages;
+use App\Models\UserpostHashtagMapping;
 
 /**
  * Class MessagehubRepository
@@ -455,6 +456,20 @@ class MessagehubRepository extends BaseRepository
                 $pushMessageId = $this->resendData['id'];
             }else{
                 $messageId = $this->addNotification($employerId, true);
+                if(isset($this->notificationData['userpost_hashtag_id']) && !empty($this->notificationData['userpost_hashtag_id'])){
+                    $userpostHashtag = explode(",",$this->notificationData['userpost_hashtag_id']);
+                    foreach($userpostHashtag as $hashtag){
+                        $checkExists = UserpostHashtagMapping::where(['message_id' => $messageId, 'userpost_hashtag_id' => $hashtag])->first();
+                        if(is_null($checkExists)){
+                            $hashtagData = [
+                                'message_id' => $messageId, 
+                                'userpost_hashtag_id' => $hashtag, 
+                                'created_at' =>carbon::now()
+                            ];
+                            UserpostHashtagMapping::insert($hashtagData);
+                        }
+                    }
+                }
                 if(isset($this->notificationData['pin_message']) && $this->notificationData['pin_message'] == 1){
                     $checkPin = PinnedMessages::where('message_id',$messageId)->first();
                     if(is_null($checkPin)){
