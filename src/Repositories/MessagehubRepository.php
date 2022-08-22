@@ -710,7 +710,8 @@ class MessagehubRepository extends BaseRepository
             $this->notificationIds[$this->notificationType]['messageId'][$employerId] = $notificationMessageId;
 
             if($mapping){
-                $this->addMessageMappingData($notificationMessageId, $employerId);
+                $employeeId  = !empty($this->notificationData['created_by'])?$this->notificationData['created_by']:auth()->user()->id
+                $this->addMessageMappingData($notificationMessageId, $employerId, $employeeId);
             }
         }
 
@@ -722,13 +723,20 @@ class MessagehubRepository extends BaseRepository
      * @param $notificationMessageId
      * @return MessageId
      */
-    public function addMessageMappingData($notificationMessageId, $employerId)
+    public function addMessageMappingData($notificationMessageId, $employerId, $employeeId = Null)
     {
         try {
             $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
             $mappedId = MessageMapping::insertGetId($mappingDetails);
 
             $this->model::where(['id' => $notificationMessageId])->update(['mapped_id' => $mappedId]);
+
+            //Extract rewards and save them
+            Log::info("Extract user reward ". $mappedId);
+            $usersRewardPoint = extractUserReward($this->notificationData['message']);
+            if(!empty($usersRewardPoint)){
+                ProcessGamificationRecognitionPointAllocation::dispatch($usersRewardPoint, $employeeId, $employerId, $mappedId);
+            }
 
             //Extract hash tag and  save them
             $hashTagArr = extractHashTag($this->notificationData['message']);
