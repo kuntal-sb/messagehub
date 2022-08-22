@@ -1,4 +1,4 @@
-<?php
+                               <?php
 
 namespace Strivebenifits\Messagehub\Repositories;
 
@@ -41,6 +41,7 @@ use App\Jobs\ProcessBulkEmailNotification;
 use App\Jobs\ProcessBulkTextNotification;
 use App\Jobs\ProcessBulkEmailNotificationAppNotDownloaded;
 use App\Jobs\ProcessBulkTextNotificationAppNotDownloaded;
+use App\Jobs\ProcessGamificationRecognitionPointAllocation;
 use App\Mail\AppNotDownloadedEmail;
 
 use Illuminate\Bus\Batch;
