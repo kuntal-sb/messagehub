@@ -710,7 +710,7 @@ class MessagehubRepository extends BaseRepository
             $this->notificationIds[$this->notificationType]['messageId'][$employerId] = $notificationMessageId;
 
             if($mapping){
-                $employeeId  = !empty($this->notificationData['created_by'])?$this->notificationData['created_by']:auth()->user()->id
+                $employeeId  = !empty($this->notificationData['created_by'])?$this->notificationData['created_by']:auth()->user()->id;
                 $this->addMessageMappingData($notificationMessageId, $employerId, $employeeId);
             }
         }
