@@ -1806,4 +1806,22 @@ class MessagehubRepository extends BaseRepository
             Log::error($e);
         }
     }
+
+    /**
+     * get selected appinstances name by using its id
+     * @param id
+     * @return 
+     **/
+    public function getFilterAppName($appId)
+    {
+        try {
+            if(!empty($appId)) {
+                return DB::table('app_instances')
+                            ->whereIn('id', $appId)
+                            ->pluck('name')->toArray();
+            }
+        } catch (Exception $e) {
+            Log::error($e);
+        }
+    }
 }

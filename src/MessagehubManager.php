@@ -120,6 +120,21 @@ class MessagehubManager
         }
     }
 
+    /**
+     * get selected appInstances details
+     * 
+     * @param appInstancesId
+     * @return
+     */
+    public function getFilterAppName($appId)
+    {
+        try {
+            return $this->messagehubRepository->getFilterAppName($appId);
+        } catch (Exception $e) {
+            Log::error($e->getMessage());
+        }
+    }
+
     public function prepareReportData($request)
     {
         if(!empty($request->daterange)){
