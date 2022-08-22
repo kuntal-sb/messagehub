@@ -669,23 +669,21 @@ class MessagehubRepository extends BaseRepository
                 $notificationMessageId = $this->addNotification($employerId, true);
             }
 
-            /*if(method_exists($this->templateManager,'mapEmailTemplateKeywords')){
-                $this->notificationData['email_subject'] = $this->templateManager->mapEmailTemplateKeywords($this->notificationData['email_subject'], $employerId);
-                $this->notificationData['email_body'] = $this->templateManager->mapEmailTemplateKeywords($this->notificationData['email_body'], $employerId);
-            }*/
-
             foreach ($employees as $employee) {
 
+                $email_subject = $this->notificationData['email_subject'];
+                $email_body = $this->notificationData['email_body'];
+
                 if(method_exists($this->templateManager,'mapEmailTemplateKeywords')){
-                    $this->notificationData['email_subject'] = $this->templateManager->mapEmailTemplateKeywords($this->notificationData['email_subject'], $employerId, $employee);
-                    $this->notificationData['email_body'] = $this->templateManager->mapEmailTemplateKeywords($this->notificationData['email_body'], $employerId, $employee);
+                    $email_subject = $this->templateManager->mapEmailTemplateKeywords($email_subject, $employerId, $employee);
+                    $email_body = $this->templateManager->mapEmailTemplateKeywords($email_body, $employerId, $employee);
                 }
 
                 $emailData = ['employee' => $employee,
                             'employer_id' => $employerId,
-                            'email_subject' => $this->notificationData['email_subject'],
+                            'email_subject' => $email_subject,
                             'email_template' => $this->notificationData['email_template'],
-                            'email_body' => $this->notificationData['email_body'],
+                            'email_body' => $email_body,
                             'message_id' => $notificationMessageId];
 
                 if(!$this->isResend){
