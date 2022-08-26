@@ -1420,7 +1420,7 @@ class MessagehubRepository extends BaseRepository
      * @param Array $employers, for which we need to get data
      * @return Array $selectedEmployees
      */
-    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds = [])
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds = [],$includeSpouseDependents = false)
     {
         $employeeData = [];
         if(!is_array($employers)){
@@ -1446,6 +1446,12 @@ class MessagehubRepository extends BaseRepository
             //filter record based on email if provided
             if(!empty($emails)){
                 $query = $query->whereIn('users.email',$emails);
+            }
+
+            if(!$includeSpouseDependents){
+                $query = $query->whereNotIn('users.id', function ($q) {
+                    $q->select('spouse_id')->from('emplyoee_spouse');
+                });
             }
 
             //Get only those users who has downloaded app
@@ -1488,7 +1494,7 @@ class MessagehubRepository extends BaseRepository
      * @param Array $employers, for which we need to get data
      * @return int $EmployeesCount
      */
-    public function getEmployeeCount($type, $employers, $filterTemplate = '', $appInstanceIds = [])
+    public function getEmployeeCount($type, $employers, $filterTemplate = '', $appInstanceIds = [], $includeSpouseDependents = false)
     {
         $employeeData = [];
         if(!is_array($employers)){
@@ -1506,6 +1512,12 @@ class MessagehubRepository extends BaseRepository
 
         if (!empty($appInstanceIds)) {
             $query = $query->join('app_instance_assigned', 'app_instance_assigned.user_id', '=', 'users.id')->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+        }
+
+        if(!$includeSpouseDependents){
+            $query = $query->whereNotIn('users.id', function ($q) {
+                $q->select('spouse_id')->from('emplyoee_spouse');
+            });
         }
 
         //Get only those users who has downloaded app
