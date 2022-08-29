@@ -118,6 +118,6 @@ class NotificationMessageHub extends Model
     public function parseMessage($message)
     {
         $message = str_replace("&nbsp;"," ",$message);
-        return trim(strip_tags($message,"<user-tag>"));
+        return trim(strip_tags($message,'<user-tag><user-reward>'));
     }
 }
