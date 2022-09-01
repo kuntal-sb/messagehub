@@ -148,6 +148,7 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['created_as'] = !empty($data['created_as'])?$data['created_as']:getEmployerId();
         $this->notificationData['logo'] = !empty($data['logo_path'])?$data['logo_path']:'';
         $this->notificationData['thumbnail'] = !empty($data['thumbnail_path'])?$data['thumbnail_path']:'';
+        $this->notificationData['includeSpouseDependents'] = !empty($data['toggleSpouse'])? true: false;
 
         if(!empty($data['thumbnail_path'])){
             $this->setThumbnailPath($data['thumbnail_path']);
@@ -407,7 +408,7 @@ class MessagehubRepository extends BaseRepository
                 $batchList = [];
                 foreach($employerList as $employerId){
                     if(empty($employeeList)){
-                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds);
+                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents']);
                     }
                     $batchList[] = new ProcessBulkPushNotification($brokerId, $employerId, $employees, $this->notificationData);
                 }
@@ -634,7 +635,7 @@ class MessagehubRepository extends BaseRepository
                 $batchList = [];
                 foreach($employerList as $employerId){
                     if(empty($employeeList)){
-                        $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate, $appInstanceIds);
+                        $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate, $appInstanceIds,$this->notificationData['includeSpouseDependents']);
                     }
                     $batchList[] = new ProcessBulkEmailNotification($employerId, $employees, $this->notificationData);
                 }
@@ -750,7 +751,7 @@ class MessagehubRepository extends BaseRepository
                 $employeeListTagAll = [];
                 if(in_array(Config::get('constants.MESSAGE_TAG_ALL_USER'), $userIdTagArr)){
                     $type = 'in-app';
-                    $employeeListTagAll = $this->getEmployeeList($type, $employerId);
+                    $employeeListTagAll = $this->getEmployeeList($type, $employerId,[],[],'',[],$this->notificationData['includeSpouseDependents']);
                 }
                 $this->mappedUserTagRepository->manageCommentUsertag($userTagArr, $mappedId, $notificationMessageId, $employeeListTagAll);
             }
@@ -763,12 +764,12 @@ class MessagehubRepository extends BaseRepository
     public function getEmployeeBySentType($employerId = '')
     {
         if($this->notificationData['send_to'] == 'send_to_all'){
-            return $this->getEmployeeList($this->notificationType, $employerId);
+            return $this->getEmployeeList($this->notificationType, $employerId,[],[],'',[], $this->notificationData['includeSpouseDependents']);
         }
         else if(in_array($this->notificationData['send_to'], ['send_to_filter_list'])){
-            return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate']);
+            return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate'],[],$this->notificationData['includeSpouseDependents']);
         }else if(in_array($this->notificationData['send_to'], ['send_to_app_instances'])){
-            return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate'], $this->notificationData['appInstance']);
+            return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate'], $this->notificationData['appInstance'],$this->notificationData['includeSpouseDependents']);
         }else{
             return $this->getPhoneNumberByUser($this->notificationData['employees']);
         }
