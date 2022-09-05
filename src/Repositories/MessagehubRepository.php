@@ -1438,19 +1438,40 @@ class MessagehubRepository extends BaseRepository
                         ->active()
                         ->select('users.id','users.username','users.first_name','users.last_name','users.email','users.created_at','users.last_login');
             if(!empty($selectedEmployees)){
-                $query = $query->whereIn('users.id',$selectedEmployees);
+                $query->whereIn('users.id',$selectedEmployees);
             }
 
+            // if(!empty($appInstanceIds)){
+            //     $query = $query->join('app_instance_assigned','app_instance_assigned.user_id','=','users.id')->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+            // }
+
             if(!empty($appInstanceIds)){
-                $query = $query->join('app_instance_assigned','app_instance_assigned.user_id','=','users.id')->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+                if(!$includeSpouseDependents){
+                    $query->join('app_instance_assigned','app_instance_assigned.user_id','=','users.id')
+                        ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+                } else {
+                    $query->where(function($q1) use ($appInstanceIds){
+                        $q1->whereIn('users.id', function ($q2) use ($appInstanceIds) {
+                            $q2->select('user_id')->from('app_instance_assigned')
+                                ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+                            });
+                    })->orWhere(function($q1) use ($appInstanceIds){
+                        $q1->whereIn('users.id', function ($q2) use ($appInstanceIds) {
+                            $q2->select('spouse_id')->from('emplyoee_spouse')
+                                ->join('app_instance_assigned','app_instance_assigned.user_id','=','emplyoee_spouse.employee_id')
+                                ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+                            });
+                    });
+                }
             }
+
             //filter record based on email if provided
             if(!empty($emails)){
-                $query = $query->whereIn('users.email',$emails);
+                $query->whereIn('users.email',$emails);
             }
 
             if(!$includeSpouseDependents){
-                $query = $query->whereNotIn('users.id', function ($q) {
+                $query->whereNotIn('users.id', function ($q) {
                     $q->select('spouse_id')->from('emplyoee_spouse');
                 });
             }
