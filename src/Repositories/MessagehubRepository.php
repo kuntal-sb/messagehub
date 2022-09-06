@@ -1537,7 +1537,23 @@ class MessagehubRepository extends BaseRepository
                     ->select('users.id');
 
         if (!empty($appInstanceIds)) {
-            $query = $query->join('app_instance_assigned', 'app_instance_assigned.user_id', '=', 'users.id')->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+            if(!$includeSpouseDependents){
+                $query->join('app_instance_assigned','app_instance_assigned.user_id','=','users.id')
+                    ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+            } else {
+                $query->where(function($q1) use ($appInstanceIds){
+                    $q1->whereIn('users.id', function ($q2) use ($appInstanceIds) {
+                        $q2->select('user_id')->from('app_instance_assigned')
+                            ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+                        });
+                })->orWhere(function($q1) use ($appInstanceIds){
+                    $q1->whereIn('users.id', function ($q2) use ($appInstanceIds) {
+                        $q2->select('spouse_id')->from('emplyoee_spouse')
+                            ->join('app_instance_assigned','app_instance_assigned.user_id','=','emplyoee_spouse.employee_id')
+                            ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+                        });
+                });
+            }
         }
 
         if(!$includeSpouseDependents){
