@@ -150,6 +150,10 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['thumbnail'] = !empty($data['thumbnail_path'])?$data['thumbnail_path']:'';
         $this->notificationData['includeSpouseDependents'] = !empty($data['toggleSpouse'])? true: false;
 
+        if(!empty($this->notificationData['categoryId']) && !empty($this->notificationData['subCategoryId'])) {
+            $this->notificationData['includeSpouseDependents'] = true;
+        }
+
         if(!empty($data['thumbnail_path'])){
             $this->setThumbnailPath($data['thumbnail_path']);
         }
