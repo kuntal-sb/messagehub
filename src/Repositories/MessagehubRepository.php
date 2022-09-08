@@ -418,7 +418,7 @@ class MessagehubRepository extends BaseRepository
                 $batchList = [];
                 foreach($employerList as $employerId){
                     if(empty($employeeList)){
-                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents'], [$this->notificationData['created_by']]);
+                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents']);
                     }
                     $batchList[] = new ProcessBulkPushNotification($brokerId, $employerId, $employees, $this->notificationData);
                 }

@@ -383,8 +383,9 @@ class MessagehubManager
                 $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
                 $unreadCount = $unreadCount + 1;
             }
-
-            $this->sendNotification($data, $logID, $message_id, $unreadCount);
+            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))){
+                $this->sendNotification($data, $logID, $message_id, $unreadCount);
+            }
         }catch(Exception $e){
             Log::error($e);
         }
