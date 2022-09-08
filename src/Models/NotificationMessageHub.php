@@ -104,6 +104,7 @@ class NotificationMessageHub extends Model
                     'category_id'    => (isset($requestData['categoryId']))?$requestData['categoryId']:0,
                     'subcategory_id' => (isset($requestData['subCategoryId']))?$requestData['subCategoryId']:0,
                     'userpost_learn_more' => (isset($requestData['allow_learn_more']))?$requestData['allow_learn_more']:0,
+                    'created_from' => (isset($requestData['created_from']))?$requestData['created_from']:'notification',
                     'created_at'    => Carbon::now(),
                     'updated_at'    => Carbon::now()
                    );
