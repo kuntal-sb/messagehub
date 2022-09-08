@@ -150,7 +150,13 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['thumbnail'] = !empty($data['thumbnail_path'])?$data['thumbnail_path']:'';
         $this->notificationData['includeSpouseDependents'] = !empty($data['toggleSpouse'])? true: false;
 
-        if(!empty($this->notificationData['categoryId']) && !empty($this->notificationData['subCategoryId'])) {
+        /*if(!empty($this->notificationData['categoryId']) && !empty($this->notificationData['subCategoryId'])) {
+            $this->notificationData['includeSpouseDependents'] = true;
+        }*/
+
+        $this->notificationData['created_from'] = !empty($data['created_from']) ? $data['created_from'] : 'notification';
+
+        if($this->notificationData['created_from'] == 'user_post'){
             $this->notificationData['includeSpouseDependents'] = true;
         }
 
@@ -412,7 +418,7 @@ class MessagehubRepository extends BaseRepository
                 $batchList = [];
                 foreach($employerList as $employerId){
                     if(empty($employeeList)){
-                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents']);
+                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents'], [$this->notificationData['created_by']]);
                     }
                     $batchList[] = new ProcessBulkPushNotification($brokerId, $employerId, $employees, $this->notificationData);
                 }
@@ -529,8 +535,8 @@ class MessagehubRepository extends BaseRepository
 
                     $logID = $this->insertNotificationLog($send_data, $messageId, $messageStatus);
 
-                    // Send Email/Text message to users who has not downloaded app
-                    if($deviceToken == ''){
+                    // Send Email/Text message to users who has not downloaded app. message will not send for user post(from mobile)
+                    if($deviceToken == '' && $this->notificationData['created_from'] != 'user_post'){
                         ProcessBulkEmailNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
                         //ProcessBulkTextNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
                     }
@@ -1425,7 +1431,7 @@ class MessagehubRepository extends BaseRepository
      * @param Array $employers, for which we need to get data
      * @return Array $selectedEmployees
      */
-    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds = [],$includeSpouseDependents = false)
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds = [],$includeSpouseDependents = false, $excludeEmployees = array())
     {
         $employeeData = [];
         if(!is_array($employers)){
@@ -1443,6 +1449,9 @@ class MessagehubRepository extends BaseRepository
                         ->select('users.id','users.username','users.first_name','users.last_name','users.email','users.created_at','users.last_login');
             if(!empty($selectedEmployees)){
                 $query->whereIn('users.id',$selectedEmployees);
+            }
+            if(!empty($excludeEmployees)){
+                $query->whereNotIn('users.id',$excludeEmployees);
             }
 
             // if(!empty($appInstanceIds)){
