@@ -647,6 +647,16 @@ class MessagehubRepository extends BaseRepository
                     if(empty($employeeList)){
                         $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate, $appInstanceIds,$this->notificationData['includeSpouseDependents']);
                     }
+                    if($this->notificationData['notification_type'] == config('messagehub.notification.type.EMAIL')){
+                        foreach($employees as $index => $employee){
+                            $checkUnsubscribe = DB::table('unsubscribes')->where('user_id',$employee['id'])
+                                                ->where('emailtemplate_id',base64_decode($this->notificationData['email_template']))
+                                                ->where('is_unsubscribe',1)->first();
+                            if($checkUnsubscribe){
+                                unset($employees[$index]);
+                            }
+                        }
+                    }
                     $batchList[] = new ProcessBulkEmailNotification($employerId, $employees, $this->notificationData);
                 }
                 Bus::batch([
@@ -696,7 +706,8 @@ class MessagehubRepository extends BaseRepository
                             'email_subject' => $email_subject,
                             'email_template' => $this->notificationData['email_template'],
                             'email_body' => $email_body,
-                            'message_id' => $notificationMessageId];
+                            'message_id' => $notificationMessageId,
+                            'unsubscribe_flag' => $this->notificationData['unsubscribe_flag']];
 
                 if(!$this->isResend){
                     NotificationMessageHubEmailLog::create(['employee_id' => $employee['id'], 'employer_id' => $employerId, 'message_id' => $notificationMessageId]);
