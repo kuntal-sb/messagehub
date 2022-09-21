@@ -651,7 +651,7 @@ class MessagehubRepository extends BaseRepository
                         foreach($employees as $index => $employee){
                             $checkUnsubscribe = DB::table('unsubscribes')->where('user_id',$employee['id'])
                                                 ->where('emailtemplate_id',base64_decode($this->notificationData['email_template']))
-                                                ->where('is_unsubscribe',1)->first();
+                                                ->where('is_unsubscribe','1')->first();
                             if($checkUnsubscribe){
                                 unset($employees[$index]);
                             }
