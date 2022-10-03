@@ -13,6 +13,7 @@ use App\Jobs\SendLogToElastic;
 use Strivebenifits\Messagehub\Jobs\sendNotifications;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
+use App\Http\Repositories\GlobalSettingsRepository;
 
 class MessagehubManager
 {
@@ -383,7 +384,11 @@ class MessagehubManager
                 $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
                 $unreadCount = $unreadCount + 1;
             }
-            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))){
+
+            $globalSettingsRepository = app()->make(GlobalSettingsRepository::class);
+            $globalSettingData = $globalSettingsRepository->first(['field' => 'USER_GENERATED_POST']);
+
+            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && $data['created_from'] == 'user_post' && $globalSettingData->value == 1)){
                 $this->sendNotification($data, $logID, $message_id, $unreadCount);
             }
         }catch(Exception $e){
