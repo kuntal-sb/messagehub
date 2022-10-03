@@ -388,7 +388,7 @@ class MessagehubManager
             $globalSettingsRepository = app()->make(GlobalSettingsRepository::class);
             $globalSettingData = $globalSettingsRepository->first(['field' => 'USER_GENERATED_POST']);
 
-            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && $data['created_from'] == 'user_post' && $globalSettingData->value == 1)){
+            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && $data['created_from'] == 'user_post' && $globalSettingData->value == "0")){
                 $this->sendNotification($data, $logID, $message_id, $unreadCount);
             }
         }catch(Exception $e){
