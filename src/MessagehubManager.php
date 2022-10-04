@@ -390,6 +390,11 @@ class MessagehubManager
 
             if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && $data['created_from'] == 'user_post' && $globalSettingData->value == "0")){
                 $this->sendNotification($data, $logID, $message_id, $unreadCount);
+            }else if(isset($data['created_from']) && $data['created_from'] == 'user_post' && $globalSettingData->value == "1" && !((isset($data['comment_id']) && $data['comment_id'] !=0))){
+
+                $messagehubData = $this->messagehubRepository->getNotificationsWithSubCategory($message_id);
+                $data['title'] = $messagehubData->sub_cat_title;
+                $this->sendNotification($data, $logID, $message_id, $unreadCount);
             }
         }catch(Exception $e){
             Log::error($e);

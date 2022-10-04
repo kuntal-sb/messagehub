@@ -760,6 +760,25 @@ class MessagehubRepository extends BaseRepository
                 ProcessGamificationRecognitionPointAllocation::dispatch($usersRewardPoint, $employeeId, $employerId, $mappedId);
             }
 
+            //Extract tagged user and save them
+            $userTagArr = array_unique(extractUserTag($this->notificationData['message']));
+
+            if(!empty($userTagArr)){
+                $employeeListTagAll = [];
+                if(in_array(Config::get('constants.MESSAGE_TAG_ALL_USER'), $userTagArr)){
+                    $type = 'in-app';
+                    $employeeListTagAll = $this->getEmployeeList($type, $employerId,[],[],'',[],$this->notificationData['includeSpouseDependents']);
+                }
+                
+                $pushMessage['title'] = $this->notificationData['title'];
+                $pushMessage['message'] = $this->notificationData['message'];
+
+                $userRepository = app()->make(UsersRepository::class);
+                $userData = $userRepository->first(['id' => $employeeId], ['id','broker_id','referer_id']);
+                $brokerId = getBrokerFromEmployee($userData);
+                $this->mappedUserTagRepository->manageCommentUsertag($userTagArr, $mappedId, $notificationMessageId, $employeeListTagAll, $employerId, $brokerId, $pushMessage, $this->notificationData['created_from']);
+            }
+
             //Extract hash tag and  save them
             $hashTagArr = extractHashTag($this->notificationData['message']);
             if(!empty($hashTagArr)){
