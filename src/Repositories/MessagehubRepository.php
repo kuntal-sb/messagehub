@@ -36,6 +36,7 @@ use App\Http\Managers\TemplateManager;
 
 use App\Http\Repositories\MappedHashtagRepository;
 use App\Http\Repositories\MappedUserTagRepository;
+//use App\Http\Repositories\MessageMappingRepository;
 use App\Jobs\ProcessBulkPushNotification;
 use App\Jobs\ProcessBulkEmailNotification;
 use App\Jobs\ProcessBulkTextNotification;
@@ -149,6 +150,7 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['logo'] = !empty($data['logo_path'])?$data['logo_path']:'';
         $this->notificationData['thumbnail'] = !empty($data['thumbnail_path'])?$data['thumbnail_path']:'';
         $this->notificationData['includeSpouseDependents'] = !empty($data['toggleSpouse'])? true: false;
+        $this->notificationData['includeDemoAccounts'] = !empty($data['toggleDemoAccount'])? true: false;
 
         /*if(!empty($this->notificationData['categoryId']) && !empty($this->notificationData['subCategoryId'])) {
             $this->notificationData['includeSpouseDependents'] = true;
@@ -418,7 +420,7 @@ class MessagehubRepository extends BaseRepository
                 $batchList = [];
                 foreach($employerList as $employerId){
                     if(empty($employeeList)){
-                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents']);
+                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
                     }
                     $batchList[] = new ProcessBulkPushNotification($brokerId, $employerId, $employees, $this->notificationData);
                 }
@@ -645,7 +647,7 @@ class MessagehubRepository extends BaseRepository
                 $batchList = [];
                 foreach($employerList as $employerId){
                     if(empty($employeeList)){
-                        $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate, $appInstanceIds,$this->notificationData['includeSpouseDependents']);
+                        $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate, $appInstanceIds,$this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
                     }
                     if($this->notificationData['notification_type'] == config('messagehub.notification.type.EMAIL')){
                         foreach($employees as $index => $employee){
@@ -751,7 +753,7 @@ class MessagehubRepository extends BaseRepository
             $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
             $mappedId = MessageMapping::insertGetId($mappingDetails);
 
-            $this->model::where(['id' => $notificationMessageId])->update(['mapped_id' => $mappedId]);
+            $notificationMessage = $this->model::where(['notifications_message_hub.id' => $notificationMessageId])->update(['mapped_id' => $mappedId]);
 
             //Extract rewards and save them
             Log::info("Extract user reward ". $mappedId);
@@ -767,7 +769,7 @@ class MessagehubRepository extends BaseRepository
                 $employeeListTagAll = [];
                 if(in_array(Config::get('constants.MESSAGE_TAG_ALL_USER'), $userTagArr)){
                     $type = 'in-app';
-                    $employeeListTagAll = $this->getEmployeeList($type, $employerId,[],[],'',[],$this->notificationData['includeSpouseDependents']);
+                    $employeeListTagAll = $this->getEmployeeList($type, $employerId,[],[],'',[],$this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
                 }
                 
                 $pushMessage['title'] = $this->notificationData['title'];
@@ -785,16 +787,6 @@ class MessagehubRepository extends BaseRepository
                 $this->mappedHashtagRepository->manageCommentHashtag($hashTagArr, $mappedId);
             }
 
-            //Extract tagged user and save them
-            $userTagArr = extractUserTag($this->notificationData['message']);
-            if(!empty($userTagArr)){
-                $employeeListTagAll = [];
-                if(in_array(Config::get('constants.MESSAGE_TAG_ALL_USER'), $userIdTagArr)){
-                    $type = 'in-app';
-                    $employeeListTagAll = $this->getEmployeeList($type, $employerId,[],[],'',[],$this->notificationData['includeSpouseDependents']);
-                }
-                $this->mappedUserTagRepository->manageCommentUsertag($userTagArr, $mappedId, $notificationMessageId, $employeeListTagAll);
-            }
 
         } catch (Exception $e) {
             Log::error("Message Mapping Log: ".$e);
@@ -804,12 +796,12 @@ class MessagehubRepository extends BaseRepository
     public function getEmployeeBySentType($employerId = '')
     {
         if($this->notificationData['send_to'] == 'send_to_all'){
-            return $this->getEmployeeList($this->notificationType, $employerId,[],[],'',[], $this->notificationData['includeSpouseDependents']);
+            return $this->getEmployeeList($this->notificationType, $employerId,[],[],'',[], $this->notificationData['includeSpouseDependents'],[], $this->notificationData['includeDemoAccounts']);
         }
         else if(in_array($this->notificationData['send_to'], ['send_to_filter_list'])){
-            return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate'],[],$this->notificationData['includeSpouseDependents']);
+            return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate'],[],$this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
         }else if(in_array($this->notificationData['send_to'], ['send_to_app_instances'])){
-            return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate'], $this->notificationData['appInstance'],$this->notificationData['includeSpouseDependents']);
+            return $this->getEmployeeList($this->notificationType, $employerId, [], [], $this->notificationData['filterTemplate'], $this->notificationData['appInstance'],$this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
         }else{
             return $this->getPhoneNumberByUser($this->notificationData['employees']);
         }
@@ -1461,7 +1453,7 @@ class MessagehubRepository extends BaseRepository
      * @param Array $employers, for which we need to get data
      * @return Array $selectedEmployees
      */
-    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds = [],$includeSpouseDependents = false, $excludeEmployees = array())
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds = [],$includeSpouseDependents = false, $excludeEmployees = array(), $includeDemoAccounts = false)
     {
         $employeeData = [];
         if(!is_array($employers)){
@@ -1472,11 +1464,16 @@ class MessagehubRepository extends BaseRepository
 
         foreach($employers as $employer){
             $query = User::join('employeedetails','employeedetails.user_id','=','users.id')
-                        ->where('employeedetails.is_demo_account',0)
+                        //->where('employeedetails.is_demo_account',0)
                         ->where('users.referer_id','=',$employer)
                         ->enabled()
                         ->active()
                         ->select('users.id','users.username','users.first_name','users.last_name','users.email','users.created_at','users.last_login');
+
+            if(!$includeDemoAccounts){
+                $query->where('employeedetails.is_demo_account', 0);
+            }
+
             if(!empty($selectedEmployees)){
                 $query->whereIn('users.id',$selectedEmployees);
             }
@@ -1559,7 +1556,7 @@ class MessagehubRepository extends BaseRepository
      * @param Array $employers, for which we need to get data
      * @return int $EmployeesCount
      */
-    public function getEmployeeCount($type, $employers, $filterTemplate = '', $appInstanceIds = [], $includeSpouseDependents = false)
+    public function getEmployeeCount($type, $employers, $filterTemplate = '', $appInstanceIds = [], $includeSpouseDependents = false, $includeDemoAccounts = false)
     {
         $employeeData = [];
         if(!is_array($employers)){
@@ -1569,11 +1566,16 @@ class MessagehubRepository extends BaseRepository
         extract($this->getFilterData($filterTemplate));
 
         $query = User::join('employeedetails','employeedetails.user_id','=','users.id')
-                    ->where('employeedetails.is_demo_account',0)
+                    //->where('employeedetails.is_demo_account',0)
                     ->whereIn('users.referer_id',$employers)
                     ->enabled()
                     ->active()
                     ->select('users.id');
+
+        if(!$includeDemoAccounts){
+            $query->where('employeedetails.is_demo_account', 0);
+        }
+
 
         if (!empty($appInstanceIds)) {
             if(!$includeSpouseDependents){
@@ -1925,5 +1927,21 @@ class MessagehubRepository extends BaseRepository
         } catch (Exception $e) {
             Log::error($e);
         }
+    }
+
+    /**
+     * getNotificationsWithSubCategory.
+     * @param 
+     * @return  Query Collection
+     */
+    public function getNotificationsWithSubCategory($messageId)
+    {
+        $notifications = $this->model;
+
+        return $notifications->select('notifications_message_hub.message','notifications_message_hub.title',DB::raw('messagehub_template_subcategories.title as sub_cat_title'),'notifications_message_hub.created_by','notifications_message_hub.created_from')
+            ->leftJoin('messagehub_template_subcategories','messagehub_template_subcategories.id','notifications_message_hub.subcategory_id')
+            ->where('notifications_message_hub.id', $messageId)
+            ->first();
+        
     }
 }
