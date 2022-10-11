@@ -752,9 +752,9 @@ class MessagehubRepository extends BaseRepository
         try {
             $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
             $mappedId = MessageMapping::insertGetId($mappingDetails);
-
-            $notificationMessage = $this->model::where(['notifications_message_hub.id' => $notificationMessageId])->update(['mapped_id' => $mappedId]);
-
+            
+            $notificationMessage = $this->model::where(['notifications_message_hub.id' => $notificationMessageId]);
+            $notificationMessage->update(['mapped_id' => $mappedId]);
             //Extract rewards and save them
             Log::info("Extract user reward ". $mappedId);
             $usersRewardPoint = extractUserReward($this->notificationData['message']);
@@ -774,7 +774,10 @@ class MessagehubRepository extends BaseRepository
                 
                 $pushMessage['title'] = $this->notificationData['title'];
                 $pushMessage['message'] = $this->notificationData['message'];
-
+                if($this->notificationData['created_from'] == 'user_post') {
+                    $notificationMessageData = $notificationMessage->addSelect('notifications_message_hub.title','notifications_message_hub.message','notifications_message_hub.created_from',DB::raw('messagehub_template_subcategories.title as sub_cat_title'))->leftJoin('messagehub_template_subcategories','messagehub_template_subcategories.id','notifications_message_hub.subcategory_id')->first();
+                    $pushMessage['title'] = $notificationMessageData->sub_cat_title;
+                }
                 $userRepository = app()->make(UsersRepository::class);
                 $userData = $userRepository->first(['id' => $employeeId], ['id','broker_id','referer_id']);
                 $brokerId = getBrokerFromEmployee($userData);
@@ -792,6 +795,7 @@ class MessagehubRepository extends BaseRepository
             Log::error("Message Mapping Log: ".$e);
         }
     }
+
 
     public function getEmployeeBySentType($employerId = '')
     {

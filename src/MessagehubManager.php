@@ -374,26 +374,21 @@ class MessagehubManager
             $message_id = $data['message_id'];
             Log::info('Message Data : '.json_encode($data));
             //$fcm_key = $data['fcm_key'];
-
             //Get badge count // Add one for the new message
             $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + $this->unreadOldNotificationMessages($data['employee_id'],date('Y-m-d', 0));
-            
             if(isset($data['is_resend']) && $data['is_resend'] || (isset($data['isCommentOrReply']) && $data['isCommentOrReply'])){
-                $logID  = $data['push_message_id']; 
+                $logID  = $data['push_message_id'];
             }else{
                 $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
                 $unreadCount = $unreadCount + 1;
             }
-
             $globalSettingsRepository = app()->make(GlobalSettingsRepository::class);
             $globalSettingData = $globalSettingsRepository->first(['field' => 'USER_GENERATED_POST']);
-
             if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && $data['created_from'] == 'user_post' && $globalSettingData->value == "0")){
-                $this->sendNotification($data, $logID, $message_id, $unreadCount);
-            }else if(isset($data['created_from']) && $data['created_from'] == 'user_post' && $globalSettingData->value == "1" && !((isset($data['comment_id']) && $data['comment_id'] !=0))){
-
-                $messagehubData = $this->messagehubRepository->getNotificationsWithSubCategory($message_id);
-                $data['title'] = $messagehubData->sub_cat_title;
+                if(isset($data['created_from']) && $data['created_from'] == 'user_post'){
+                    $messagehubData = $this->messagehubRepository->getNotificationsWithSubCategory($message_id);
+                    $data['title'] = $messagehubData->sub_cat_title;
+                }
                 $this->sendNotification($data, $logID, $message_id, $unreadCount);
             }
         }catch(Exception $e){
