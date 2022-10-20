@@ -364,7 +364,7 @@ class MessagehubRepository extends BaseRepository
     public function getChartData($query)
     {
         $query->select(
-                    DB::raw("sum(case when STATUS = 'sent' then 1 else 0 end) as sent,sum(case when STATUS = 'delivered' OR STATUS = 'success' then 1 else 0 end) as delivered,sum(case when STATUS = 'undelivered' then 1 else 0 end) as undelivered,sum(case when STATUS = 'failed' then 1 else 0 end) as failed, sum(case when STATUS = 'opened' then 1 else 0 end) as open,sum(case when STATUS = 'read' then 1 else 0 end) as `read`, DATE_FORMAT(x.created_at, '%Y-%M') as created_at")
+                    DB::raw("sum(case when STATUS = 'sent' then 1 else 0 end) as sent,sum(case when STATUS = 'delivered' OR STATUS = 'success' then 1 else 0 end) as delivered,sum(case when STATUS = 'undelivered' then 1 else 0 end) as undelivered,sum(case when STATUS = 'failed' then 1 else 0 end) as failed, sum(case when STATUS = 'opened' then 1 else 0 end) as open,sum(case when STATUS = 'read' then 1 else 0 end) as `read`,sum(case when STATUS = 'engaged' then 1 else 0 end) as `engaged`,sum(case when STATUS = 'completed' then 1 else 0 end) as `completed`, DATE_FORMAT(x.created_at, '%Y-%M') as created_at")
                 );
         $query->groupBy(DB::raw('YEAR(x.created_at)'), DB::raw('MONTH(x.created_at)'))
                     ->orderBy('x.created_at', 'desc');
