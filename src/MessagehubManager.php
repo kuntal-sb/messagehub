@@ -951,4 +951,25 @@ class MessagehubManager
     public function updateMessage($request){
         return $this->messagehubRepository->updateMessage($request);
     }
+
+    /**
+     * get Notification Status Details
+     *
+     * @param $notification
+     * @return array
+     */
+    public function getNotificationStatusDetails($notification)
+    {
+        $notificationOpened = $this->messagehubRepository->getNotificationUserActionBasedOnFlag($notification, 'opened');
+        $notificationEngaged = $this->messagehubRepository->getNotificationUserActionBasedOnFlag($notification, 'engaged');
+        $notificationCompleted = $this->messagehubRepository->getNotificationUserActionBasedOnFlag($notification, 'completed');
+        //retrieve old data
+        $notificationRead = $this->messagehubRepository->getNotificationUserActionBasedOnFlag($notification, 'read');
+        return [
+            "notificationOpened" => $notificationOpened,
+            "notificationEngaged" => $notificationEngaged,
+            "notificationCompleted" => $notificationCompleted,
+            "notificationRead" =>$notificationRead
+        ];
+    }
 }

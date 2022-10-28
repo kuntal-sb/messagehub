@@ -1948,4 +1948,30 @@ class MessagehubRepository extends BaseRepository
             ->first();
         
     }
+
+    /**
+     * get Notification userAction based on flag
+     *
+     * @param $notification
+     * @param $status
+     * @return collection modal
+     */
+    public function getNotificationUserActionBasedOnFlag($notification, $status)
+    {
+        $userActionDetails = $notification->pushNotifications();
+
+        if($status == "opened"){
+            $userActionDetails = $userActionDetails->where([['open_status', 1],['engaged_status', 0],['completed_status',0],['read_status',0]]);
+        }
+        if($status == "engaged"){
+            $userActionDetails = $userActionDetails->where([['engaged_status',1],['completed_status',0]]);
+        }
+        if($status == "completed"){
+            $userActionDetails = $userActionDetails->where('completed_status',1);
+        }
+        if($status == "read"){
+            $userActionDetails = $userActionDetails->where([['read_status',1],['engaged_status',0],['completed_status',0]]);
+        }
+        return $userActionDetails->get();
+    }
 }
