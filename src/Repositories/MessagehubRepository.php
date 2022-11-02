@@ -157,6 +157,7 @@ class MessagehubRepository extends BaseRepository
         }*/
 
         $this->notificationData['created_from'] = !empty($data['created_from']) ? $data['created_from'] : 'notification';
+        $this->notificationData['timeZoneOffset'] = !empty($data['timeZoneOffset']) ? $data['timeZoneOffset'] : '+00:00';
 
         if($this->notificationData['created_from'] == 'user_post'){
             $this->notificationData['includeSpouseDependents'] = true;
@@ -759,7 +760,7 @@ class MessagehubRepository extends BaseRepository
             Log::info("Extract user reward ". $mappedId);
             $usersRewardPoint = extractUserReward($this->notificationData['message']);
             if(!empty($usersRewardPoint)){
-                ProcessGamificationRecognitionPointAllocation::dispatch($usersRewardPoint, $employeeId, $employerId, $mappedId);
+                ProcessGamificationRecognitionPointAllocation::dispatch($usersRewardPoint, $employeeId, $employerId, $mappedId, $this->notificationData['timeZoneOffset']);
             }
 
             //Extract tagged user and save them
