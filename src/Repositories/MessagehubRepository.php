@@ -49,6 +49,7 @@ use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use Strivebenifits\Messagehub\Models\PinnedMessages;
 use App\Models\UserpostHashtagMapping;
+use App\Models\UserpostContentMapping;
 
 /**
  * Class MessagehubRepository
@@ -471,6 +472,18 @@ class MessagehubRepository extends BaseRepository
                 $pushMessageId = $this->resendData['id'];
             }else{
                 $messageId = $this->addNotification($employerId, true);
+
+                if(!empty($this->notificationData['content_id'])){
+                    $contentId = $this->notificationData['content_id'];
+                    $checkExists = UserpostContentMapping::where(['message_id' => $messageId, 'content_id' => $contentId])->first();
+                    if(is_null($checkExists)){
+                        UserpostContentMapping::create([
+                            'message_id' => $messageId, 
+                            'content_id' => $contentId, 
+                        ]);
+                    }
+                }
+
                 if(isset($this->notificationData['userpost_hashtag_id']) && !empty($this->notificationData['userpost_hashtag_id'])){
                     $userpostHashtag = explode(",",$this->notificationData['userpost_hashtag_id']);
                     foreach($userpostHashtag as $hashtag){
