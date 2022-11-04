@@ -2,6 +2,7 @@
 
 namespace Strivebenifits\Messagehub;
 
+use App\Http\Repositories\ElasticRepository;
 use Strivebenifits\Messagehub\Repositories\MessagehubRepository;
 use Exception;
 use Log;
@@ -878,6 +879,8 @@ class MessagehubManager
     public function removeNotifications($id)
     {
         $this->messagehubRepository->deleteByParams(['id'=>$id]);
+        $elasticRepository = app()->make(ElasticRepository::class);
+        $elasticRepository->deleteElkDocByParams(config('analytics.strive_global_connect'), ['message_id' => $id]);
         $where= ['message_id'=> $id];
         $update_data['updated_at'] = Carbon::now();
         $this->messagehubRepository->updateNotificationLogByParam($where, $update_data);
