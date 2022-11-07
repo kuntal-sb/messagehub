@@ -2,6 +2,7 @@
 
 namespace Strivebenifits\Messagehub\Repositories;
 
+use App\Http\Managers\ElasticManager;
 use App\Http\Repositories\BaseRepository;
 use Strivebenifits\Messagehub\Models\NotificationMessageHub;
 use Strivebenifits\Messagehub\Models\NotificationMessageHubPushLog;
@@ -33,7 +34,7 @@ use App\Http\Repositories\UsersRepository;
 use App\Mail\NotificationEmail;
 use Mail;
 use App\Http\Managers\TemplateManager;
-
+use App\Http\Repositories\ElasticRepository;
 use App\Http\Repositories\MappedHashtagRepository;
 use App\Http\Repositories\MappedUserTagRepository;
 //use App\Http\Repositories\MessageMappingRepository;
@@ -398,6 +399,7 @@ class MessagehubRepository extends BaseRepository
         try {
             $filterTemplate = '';
             $appInstanceIds = [];
+            $employeeArr = [];
 
             if($this->notificationData['send_to'] == 'send_to_all'){
                 $employeeList = [];
@@ -412,6 +414,7 @@ class MessagehubRepository extends BaseRepository
                 $appInstanceIds = $this->notificationData['appInstance'];
             }else{
                 $employees = $employeeList = $this->notificationData['employees'];
+                $employeeArr = array_column($employeeList, 'id');
             }
 
             //$this->setPushInfo($brokerId);
@@ -448,7 +451,7 @@ class MessagehubRepository extends BaseRepository
      *  @param
      *  @return
      */    
-    public function dispatchPushNotification($employee, $employerId)
+    public function dispatchPushNotification($employee, $employerId, $employeeArr = [])
     {
         try {
             $deviceToken = $deviceType = $is_flutter = '';
@@ -471,7 +474,7 @@ class MessagehubRepository extends BaseRepository
                 $messageId = $this->notificationData['id'];
                 $pushMessageId = $this->resendData['id'];
             }else{
-                $messageId = $this->addNotification($employerId, true);
+                $messageId = $this->addNotification($employerId, true, $employeeArr);
 
                 if(!empty($this->notificationData['content_id'])){
                     $contentId = $this->notificationData['content_id'];
@@ -741,7 +744,7 @@ class MessagehubRepository extends BaseRepository
      * @param employerId
      * @return MessageId
      */
-    public function addNotification($employerId, $mapping = false)
+    public function addNotification($employerId, $mapping = false, $employeeArr = [])
     {
         if(!isset($this->notificationIds[$this->notificationType]['messageId'][$employerId])){
             $notificationMessageId = $this->model->insertNotificationData($this->notificationType, $this->transactionId, $this->notificationData, $this->thumbnailPath);
@@ -749,7 +752,7 @@ class MessagehubRepository extends BaseRepository
 
             if($mapping){
                 $employeeId  = !empty($this->notificationData['created_by'])?$this->notificationData['created_by']:auth()->user()->id;
-                $this->addMessageMappingData($notificationMessageId, $employerId, $employeeId);
+                $this->addMessageMappingData($notificationMessageId, $employerId, $employeeId, $employeeArr);
             }
         }
 
@@ -761,11 +764,15 @@ class MessagehubRepository extends BaseRepository
      * @param $notificationMessageId
      * @return MessageId
      */
-    public function addMessageMappingData($notificationMessageId, $employerId, $employeeId = Null)
+    public function addMessageMappingData($notificationMessageId, $employerId, $employeeId = Null, $employeeArr = [])
     {
         try {
             $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
             $mappedId = MessageMapping::insertGetId($mappingDetails);
+            if(!empty($employeeArr)){
+                $elasticManager = app()->make(ElasticManager::class);
+                $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData);
+            }
             
             $notificationMessage = $this->model::where(['notifications_message_hub.id' => $notificationMessageId]);
             $notificationMessage->update(['mapped_id' => $mappedId]);
@@ -1887,6 +1894,19 @@ class MessagehubRepository extends BaseRepository
                     'expiry_date'=> ($request->expiry_date!=='')?date('Y-m-d',strtotime($request->expiry_date)):''];
             $id = base64_decode($request->id);
             NotificationMessageHub::where('id',$id)->update($data);
+            $elkRepository = app()->make(ElasticRepository::class);
+            $elasticManager = app()->make(ElasticManager::class);
+            $recordId = $elkRepository->getDocumentId(config('analytics.strive_globaal_connect'), ['message_id' => $id]);
+
+            if($request->expiry_date){
+               $data['expiry_date'] = date('Y-m-d', strtotime($request->expiry_date)) . 'T' . date('H:i:s', strtotime($request->expiry_date)) . '.000Z';
+            }else{
+                $data['expiry_date'] = date('Y-m-d', strtotime('+5 years')) . 'T' . date('H:i:s') . '.000Z';
+            }
+
+            $data['updated_at'] = date('Y-m-d') . 'T' . date('H:i:s') . '.000Z';
+
+            $elasticManager->updateElkDocByParams(config('analytics.strive_global_connect'), $recordId, $data);
             return $response = ['status_code' => 200,'message' => 'Message updated successfully'];
         }
         catch (Exception $e) {
