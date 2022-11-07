@@ -15,6 +15,7 @@ use Strivebenifits\Messagehub\Jobs\sendNotifications;
 use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use App\Http\Repositories\GlobalSettingsRepository;
+use App\Http\Managers\ElasticManager;
 
 class MessagehubManager
 {
@@ -879,8 +880,8 @@ class MessagehubManager
     public function removeNotifications($id)
     {
         $this->messagehubRepository->deleteByParams(['id'=>$id]);
-        $elasticRepository = app()->make(ElasticRepository::class);
-        $elasticRepository->deleteElkDocByParams(config('analytics.strive_global_connect'), ['message_id' => $id]);
+        $elasticManager = app()->make(ElasticManager::class);
+        $elasticManager->deleteElkDocByParams(config('analytics.strive_global_connect'), ['message_id' => $id]);
         $where= ['message_id'=> $id];
         $update_data['updated_at'] = Carbon::now();
         $this->messagehubRepository->updateNotificationLogByParam($where, $update_data);
