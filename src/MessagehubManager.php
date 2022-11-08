@@ -965,15 +965,20 @@ class MessagehubManager
     public function getNotificationStatusDetails($notification)
     {
         $notificationOpened = $this->messagehubRepository->getNotificationUserActionBasedOnFlag($notification, 'opened');
+        //only engaged not completed
         $notificationEngaged = $this->messagehubRepository->getNotificationUserActionBasedOnFlag($notification, 'engaged');
+        //get all completed action users eventhrough its not engaged
         $notificationCompleted = $this->messagehubRepository->getNotificationUserActionBasedOnFlag($notification, 'completed');
         //retrieve old data
         $notificationRead = $this->messagehubRepository->getNotificationUserActionBasedOnFlag($notification, 'read');
+        //get both engaged and completed
+        $notificationEngagedCompleted = $this->messagehubRepository->getNotificationUserActionBasedOnFlag($notification, 'engagedCompleted');
         return [
             "notificationOpened" => $notificationOpened,
             "notificationEngaged" => $notificationEngaged,
             "notificationCompleted" => $notificationCompleted,
-            "notificationRead" =>$notificationRead
+            "notificationRead" =>$notificationRead,
+            "notificationEngagedCompleted" => $notificationEngagedCompleted
         ];
     }
 }

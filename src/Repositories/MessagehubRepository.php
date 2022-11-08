@@ -286,7 +286,7 @@ class MessagehubRepository extends BaseRepository
 
         if($type == 'in-app'){
             $notifications->join('notifications_message_hub_push_log','notifications_message_hub_push_log.message_id','=','x.id');
-            $notifications->addSelect('notifications_message_hub_push_log.employee_id as employee_id','notifications_message_hub_push_log.employer_id as employer_id','notifications_message_hub_push_log.status','notifications_message_hub_push_log.created_at');
+            $notifications->addSelect('notifications_message_hub_push_log.employee_id as employee_id','notifications_message_hub_push_log.employer_id as employer_id','notifications_message_hub_push_log.status','notifications_message_hub_push_log.open_status','notifications_message_hub_push_log.engaged_status','notifications_message_hub_push_log.completed_status','notifications_message_hub_push_log.created_at');
 
         }
 
@@ -351,8 +351,7 @@ class MessagehubRepository extends BaseRepository
         $data = ['in-app' => '', 'text' => ''];
         if($type == '' || $type =='in-app'){
             $query1 = $this->getAllNotificationsDetails('in-app', $startDate, $endDate, $employeeIds, $employerIds, $filterTemplate, $searchMessage);
-            $data['in-app'] = $this->getChartData($query1);
-            
+            $data['in-app'] = $this->getChartData($query1, 'in-app');
         }
 
         if($type == '' || $type=='text')
@@ -363,12 +362,18 @@ class MessagehubRepository extends BaseRepository
         return $data;
     }
 
-
-    public function getChartData($query)
+    public function getChartData($query, $type=null)
     {
         $query->select(
                     DB::raw("sum(case when STATUS = 'sent' then 1 else 0 end) as sent,sum(case when STATUS = 'delivered' OR STATUS = 'success' then 1 else 0 end) as delivered,sum(case when STATUS = 'undelivered' then 1 else 0 end) as undelivered,sum(case when STATUS = 'failed' then 1 else 0 end) as failed, sum(case when STATUS = 'opened' then 1 else 0 end) as open,sum(case when STATUS = 'read' then 1 else 0 end) as `read`,sum(case when STATUS = 'engaged' then 1 else 0 end) as `engaged`,sum(case when STATUS = 'completed' then 1 else 0 end) as `completed`, DATE_FORMAT(x.created_at, '%Y-%M') as created_at")
                 );
+
+        if(!empty($type) && $type == 'in-app'){
+            $query = $query->addSelect(
+                DB::raw("sum(case when OPEN_STATUS = '1' && ENGAGED_STATUS = '0' && COMPLETED_STATUS ='0' then 1 else 0 end) as openFlagCount,sum(case when ENGAGED_STATUS = '1' && COMPLETED_STATUS ='0' then 1 else 0 end) as engagedFlagCount, sum(case when ENGAGED_STATUS = '1' && COMPLETED_STATUS ='1' then 1 else 0 end) as engagedCompletedFlagCount, sum(case when COMPLETED_STATUS ='1' then 1 else 0 end) as completedFlagCount")
+            );
+        }
+        
         $query->groupBy(DB::raw('YEAR(x.created_at)'), DB::raw('MONTH(x.created_at)'))
                     ->orderBy('x.created_at', 'desc');
         return $query->get();
@@ -2006,6 +2011,9 @@ class MessagehubRepository extends BaseRepository
         }
         if($status == "read"){
             $userActionDetails = $userActionDetails->where([['read_status',1],['engaged_status',0],['completed_status',0]]);
+        }
+        if($status == "engagedCompleted"){
+            $userActionDetails = $userActionDetails->where([['engaged_status',1],['completed_status',1]]);
         }
         return $userActionDetails->get();
     }
