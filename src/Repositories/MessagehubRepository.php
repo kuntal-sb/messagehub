@@ -419,7 +419,7 @@ class MessagehubRepository extends BaseRepository
                 $appInstanceIds = $this->notificationData['appInstance'];
             }else{
                 $employees = $employeeList = $this->notificationData['employees'];
-                $employeeArr = array_column($employeeList, 'id');
+                $employeeArr = $employeeList;
             }
 
             //$this->setPushInfo($brokerId);
@@ -433,7 +433,7 @@ class MessagehubRepository extends BaseRepository
                         $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
                         array_push($employeeArr,array_column($employees, 'id'));
                     }
-                    $batchList[] = new ProcessBulkPushNotification($brokerId, $employerId, $employees, $this->notificationData);
+                    $batchList[] = new ProcessBulkPushNotification($brokerId, $employerId, $employees, $this->notificationData, $employeeArr);
                 }
                 Bus::batch([
                     $batchList
@@ -1902,8 +1902,7 @@ class MessagehubRepository extends BaseRepository
             NotificationMessageHub::where('id',$id)->update($data);
             $elkRepository = app()->make(ElasticRepository::class);
             $elasticManager = app()->make(ElasticManager::class);
-            $recordId = $elkRepository->getDocumentId(config('analytics.strive_globaal_connect'), ['message_id' => $id]);
-
+            $recordId = $elkRepository->getDocumentId(config('analytics.strive_global_connect'), ['message_id' => $id]);
             if($request->expiry_date){
                $data['expiry_date'] = date('Y-m-d', strtotime($request->expiry_date)) . 'T' . date('H:i:s', strtotime($request->expiry_date)) . '.000Z';
             }else{
