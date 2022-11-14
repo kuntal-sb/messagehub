@@ -1224,6 +1224,11 @@ class MessagehubRepository extends BaseRepository
                     );
         if(!empty($messageStatus)){
             $insert_data['status'] = $messageStatus;
+            if($messageStatus == 'read'){
+                $insert_data['read_status'] = 1;
+                $insert_data['open_status'] = 1;
+                $insert_data['completed_status'] = 1;
+            }
         }
 
         $log = NotificationMessageHubPushLog::create($insert_data);

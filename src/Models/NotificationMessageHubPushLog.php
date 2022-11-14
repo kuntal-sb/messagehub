@@ -21,6 +21,7 @@ class NotificationMessageHubPushLog extends Model
         'exception_message',
         'read_status',
         'open_status',
+        'completed_status',
         'delivered_status',
         'status',
         'created_at',

@@ -381,7 +381,11 @@ class MessagehubManager
             if(isset($data['is_resend']) && $data['is_resend'] || (isset($data['isCommentOrReply']) && $data['isCommentOrReply'])){
                 $logID  = $data['push_message_id'];
             }else{
-                $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id);
+                $messageStatus = '';
+                if(isset($data['created_from']) && $data['created_from'] == 'user_post' && $data['created_by'] == $data['employee_id']){
+                    $messageStatus = 'read';
+                }
+                $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id, $messageStatus);
                 $unreadCount = $unreadCount + 1;
             }
             $globalSettingsRepository = app()->make(GlobalSettingsRepository::class);
