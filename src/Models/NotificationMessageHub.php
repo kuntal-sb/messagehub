@@ -31,6 +31,7 @@ class NotificationMessageHub extends Model
         'valid_from',
         'expiry_date',
         'notification_type',
+        'post_category_id',
         'mapped_id',
         'created_at',
         'updated_at',
@@ -72,6 +73,39 @@ class NotificationMessageHub extends Model
     }
 
     /**
+     * Get details who created notification
+     * 
+     */
+    public function createrDetails()
+    {
+        return $this->hasOne(\App\Models\User::class,'id','created_as');
+    }
+
+    /**
+     * @return BelongsTo
+     */
+    public function postCategory(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\Category::class, 'post_category_id');
+    }
+
+    /**
+     * @return HasManyThrough
+     */
+    public function tags(): HasManyThrough
+    {
+        return $this
+            ->hasManyThrough(
+                \App\Models\Tag::class,
+                \App\Models\NotificationMessageHubTagMapping::class,
+                'notification_message_id',
+                'id',
+                'id',
+                'tag_id'
+            );
+    }
+
+    /**
      * Insert Record into Notification table
      * @return Return Id of inseted record
      */
@@ -102,6 +136,7 @@ class NotificationMessageHub extends Model
                     'sent_from'     => !empty($requestData['sent_from'])?$requestData['sent_from']:'HR Team',
                     'logo'          => !empty($requestData['logo'])?$requestData['logo']:'',
                     'category_id'    => (isset($requestData['categoryId']))?$requestData['categoryId']:0,
+                    'post_category_id'    => (isset($requestData['post_category_id']))?$requestData['post_category_id']:0,
                     'subcategory_id' => (isset($requestData['subCategoryId']))?$requestData['subCategoryId']:0,
                     'userpost_learn_more' => (isset($requestData['allow_learn_more']))?$requestData['allow_learn_more']:0,
                     'created_from' => (isset($requestData['created_from']))?$requestData['created_from']:'notification',

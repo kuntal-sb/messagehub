@@ -51,6 +51,7 @@ use Illuminate\Support\Facades\Bus;
 use Strivebenifits\Messagehub\Models\PinnedMessages;
 use App\Models\UserpostHashtagMapping;
 use App\Models\UserpostContentMapping;
+use App\Models\NotificationMessageHubTagMapping;
 
 /**
  * Class MessagehubRepository
@@ -254,7 +255,7 @@ class MessagehubRepository extends BaseRepository
                     });
         });
 
-        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.created_from'])->orderBy('created_at', 'desc');
+        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.created_from','notifications_message_hub.created_as'])->orderBy('created_at', 'desc');
         return $notifications;
     }
 
@@ -269,7 +270,7 @@ class MessagehubRepository extends BaseRepository
 
         $notifications = $notifications->whereIn('notifications_message_hub.id', $messageIds);
 
-        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.expiry_date','notifications_message_hub.created_from'])->orderBy('created_at', 'desc');
+        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.expiry_date','notifications_message_hub.created_from','notifications_message_hub.created_as'])->orderBy('created_at', 'desc');
         return $notifications;
     }
 
@@ -754,6 +755,10 @@ class MessagehubRepository extends BaseRepository
     {
         if(!isset($this->notificationIds[$this->notificationType]['messageId'][$employerId])){
             $notificationMessageId = $this->model->insertNotificationData($this->notificationType, $this->transactionId, $this->notificationData, $this->thumbnailPath);
+
+            if (isset($this->notificationData['tags']) && !empty($this->notificationData['tags'])) {
+                $this->insertNotificationMessageHubTagsMappingData($notificationMessageId, $this->notificationData['tags']);
+            }
             $this->notificationIds[$this->notificationType]['messageId'][$employerId] = $notificationMessageId;
 
             if($mapping){
@@ -763,6 +768,25 @@ class MessagehubRepository extends BaseRepository
         }
 
         return $this->notificationIds[$this->notificationType]['messageId'][$employerId];
+    }
+
+    /**
+     * insert notification tag data
+     * @param $notificationId
+     * @param $tags
+     */
+    public function insertNotificationMessageHubTagsMappingData($notificationId, $tags)
+    {
+        $tagMappingArray = [];
+        foreach ($tags as $tag) {
+            $tagMappingArray[] = [
+                'notification_message_id' => $notificationId,
+                'tag_id' => $tag,
+                'created_at' => Carbon::now(),
+                'updated_at' => Carbon::now()
+            ];
+        }
+        NotificationMessageHubTagMapping::insert($tagMappingArray);
     }
 
     /**
