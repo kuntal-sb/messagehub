@@ -52,6 +52,7 @@ use Strivebenifits\Messagehub\Models\PinnedMessages;
 use App\Models\UserpostHashtagMapping;
 use App\Models\UserpostContentMapping;
 use App\Models\NotificationMessageHubTagMapping;
+use App\Models\UserpostTagMapping;
 
 /**
  * Class MessagehubRepository
@@ -522,6 +523,21 @@ class MessagehubRepository extends BaseRepository
                         PinnedMessages::insert($pinData);
                     }
                 }
+
+                if(isset($this->notificationData['userpost_tags']) && !empty($this->notificationData['userpost_tags'])){
+                    $userpostTag = explode(",",$this->notificationData['userpost_tags']);
+                    foreach($userpostTag as $hashtag){
+                        $checkExists = UserpostTagMapping::where(['message_id' => $messageId, 'userpost_tag_id' => $hashtag])->first();
+                        if(is_null($checkExists)){
+                            $tagData = [
+                                'message_id' => $messageId, 
+                                'userpost_tag_id' => $hashtag, 
+                                'created_at' => carbon::now()
+                            ];
+                            UserpostTagMapping::insert($tagData);
+                        }
+                    }
+                }
                 $pushMessageId = '';
             }
             $pushNotificationData = array();
@@ -802,6 +818,11 @@ class MessagehubRepository extends BaseRepository
             if(!empty($employeeArr)){
                 $elasticManager = app()->make(ElasticManager::class);
                 $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData);
+                $userRepository = app()->make(UsersRepository::class);
+                $loggedAsAdmin  = $userRepository->checkUsersByRole($employeeId, [Roles::ROLE_ADMIN]);
+                if(($loggedAsAdmin && $this->notificationType == config('messagehub.notification.type.INAPP')) || $this->notificationData['created_from'] == 'user_post') {
+                        $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData, $employerId);
+                }
             }
             
             $notificationMessage = $this->model::where(['notifications_message_hub.id' => $notificationMessageId]);
@@ -824,6 +845,7 @@ class MessagehubRepository extends BaseRepository
                 }
                 
                 $pushMessage['title'] = $this->notificationData['title'];
+                $pushMessage['userId'] = $employeeId;
                 $pushMessage['message'] = $this->notificationData['message'];
                 if($this->notificationData['created_from'] == 'user_post') {
                     $notificationMessageData = $notificationMessage->addSelect('notifications_message_hub.title','notifications_message_hub.message','notifications_message_hub.created_from',DB::raw('messagehub_template_subcategories.title as sub_cat_title'))->leftJoin('messagehub_template_subcategories','messagehub_template_subcategories.id','notifications_message_hub.subcategory_id')->first();
@@ -839,6 +861,13 @@ class MessagehubRepository extends BaseRepository
             $hashTagArr = extractHashTag($this->notificationData['message']);
             if(!empty($hashTagArr)){
                 $this->mappedHashtagRepository->manageCommentHashtag($hashTagArr, $mappedId);
+            }
+
+            //Extract message tag and save them
+            $messageTagArr = extractUserMessageTag($this->notificationData['message']);
+            if(!empty($messageTagArr)){
+                $messageMappedTagRepository = app()->make(MessageMappedTagRepository::class);
+                $messageMappedTagRepository->manageCommentTag($messageTagArr, $mappedId);
             }
 
 
