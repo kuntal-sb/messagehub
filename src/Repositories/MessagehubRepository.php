@@ -53,6 +53,7 @@ use App\Models\UserpostHashtagMapping;
 use App\Models\UserpostContentMapping;
 use App\Models\NotificationMessageHubTagMapping;
 use App\Models\UserpostTagMapping;
+use App\Models\Roles;
 
 /**
  * Class MessagehubRepository
