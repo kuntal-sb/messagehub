@@ -464,11 +464,13 @@ class MessagehubRepository extends BaseRepository
     {
         try {
             $deviceToken = $deviceType = $is_flutter = '';
+            $userName = '';
             if(is_array($employee)){
                 $employeeId  = $employee['id'];
                 $deviceToken = $employee['device_id'];
                 $deviceType  = $employee['device_type'];
                 $is_flutter  = $employee['is_flutter'];
+                $userName = $employee['first_name'].' '.$employee['last_name'];
             }else{
                 $employeeId = $employee;
                 $device_details = $this->getDevicebyEmployee($employeeId);
@@ -479,9 +481,17 @@ class MessagehubRepository extends BaseRepository
                     $is_flutter  = $device_details->is_flutter;
                 }
             }
-            if($this->isResend){
-                $messageId = $this->notificationData['id'];
-                $pushMessageId = $this->resendData['id'];
+
+            //code for auto gamification
+            $is_gamification_reminder = 0;
+            if(isset($this->notificationData['is_gamification_reminder']) && $this->notificationData['is_gamification_reminder'] == 1){
+                //$this->notificationData['message'] = str_replace("[USER-NAME]",$userName,$this->notificationData['message']);
+                $is_gamification_reminder = 1;
+            }
+
+            if($this->isResend || $is_gamification_reminder == 1){
+                $messageId = ($this->isResend) ? $this->notificationData['id'] : '';
+                $pushMessageId = ($this->isResend) ? $this->resendData['id'] : '';
             }else{
                 $messageId = $this->addNotification($employerId, true, $employeeArr);
 
@@ -565,14 +575,15 @@ class MessagehubRepository extends BaseRepository
                     'is_flutter' => $is_flutter,
                     'target_screen' => $this->notificationData['target_screen'],
                     'target_screen_param' => $this->notificationData['target_screen_param'],
-                    'is_resend' => $this->isResend
+                    'is_resend' => $this->isResend,
+                    'is_gamification_reminder' => $is_gamification_reminder
                 );
 
                 $seconds=0+($this->increment*2);
                 //sendNotifications::dispatch($pushNotificationData)->delay($seconds);
                 $this->increment ++;
             }else{//user has no device so make entry into notifications_message_hub_push_log with failed status when not resending message
-                if(! $this->isResend){
+                if(!$this->isResend && $is_gamification_reminder == 0){
                     $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $messageId,'message' => (string) $this->notificationData['message'],'title' => $this->notificationData['title'],'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'],'exception_message'=>'App not Downloaded' );
                     $messageStatus = 'App Not Downloaded';
 
@@ -989,9 +1000,13 @@ class MessagehubRepository extends BaseRepository
             // }else{
             //     $client -> build($recipient, $notification);
             // }
-            $result = $client -> fire();
-            $is_success = $result ===true?1:0;
-            $message = $result;
+            if(isset($data['is_gamification_reminder']) && $data['is_gamification_reminder'] == 1 && !config('notification.PUSH_GAMIFICATION_REMINDER')){
+                $message = '-- Added To Log Only --';
+                $is_success = 1;
+            }else{
+                $message = $client -> fire();
+                $is_success = $message ===true?1:0;
+            }
         } catch (Exception $e) {
             Log::error($e);
             $is_success = 0;
@@ -1726,7 +1741,7 @@ class MessagehubRepository extends BaseRepository
      * @param Array $brokers
      * @return Array Employers List
      */
-    public function getEmployerList($brokers, $selectedEmployers=array(), $emails = array(), $excludeBlockedEmployer = False)
+    public function getEmployerList($brokers, $selectedEmployers=array(), $emails = array(), $excludeBlockedEmployer = False, $onlyGamificationEmployer = False)
     {
         $employerData = [];
         if(!is_array($brokers)){
@@ -1757,6 +1772,15 @@ class MessagehubRepository extends BaseRepository
                             ->whereNull('notification_blocked_employer.deleted_at');
                     })
                     ->whereNull('notification_blocked_employer.user_id');
+            }
+
+            //Include only those employer whose Gamification or Recognition is enabled
+            if($onlyGamificationEmployer){
+                $query = $query->join('gamification_employer_settings','users.id','=','gamification_employer_settings.employer_id')->where(function($query) {
+                    return $query
+                    ->where('gamification_employer_settings.allow_gamification', 1)
+                    ->orWhere('gamification_employer_settings.allow_recognition', 1);
+                    });
             }
 
             if($this->sms_enabled == true){

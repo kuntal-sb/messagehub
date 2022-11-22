@@ -378,7 +378,7 @@ class MessagehubManager
             //$fcm_key = $data['fcm_key'];
             //Get badge count // Add one for the new message
             $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + $this->unreadOldNotificationMessages($data['employee_id'],date('Y-m-d', 0));
-            if(isset($data['is_resend']) && $data['is_resend'] || (isset($data['isCommentOrReply']) && $data['isCommentOrReply'])){
+            if(isset($data['is_resend']) && $data['is_resend'] || (isset($data['isCommentOrReply']) && $data['isCommentOrReply']) || (isset($data['is_gamification_reminder']) && $data['is_gamification_reminder'] == 1)){
                 $logID  = $data['push_message_id'];
             }else{
                 $messageStatus = '';
@@ -416,12 +416,12 @@ class MessagehubManager
             $pushMessage = htmlspecialchars(trim(processPushNotificationText($data['message'])));
 
             //If the user is from flutter app
-            if(isset($data['is_flutter']) && $data['is_flutter'] == 1){
+            // if(isset($data['is_flutter']) && $data['is_flutter'] == 1){
                 $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$message_id);
                 Log::info(json_encode($fcmPush));
                 $is_success = $fcmPush['is_success'];
                 $exception_message = $fcmPush['exception_message'];
-            }else{
+            /*}else{
                 //Old Logic
                 //If the device is ios, first hit APNS.
                 if($data['device_type'] === 'appNameIOS'){
@@ -450,8 +450,9 @@ class MessagehubManager
                     $is_success = $fcmPush['is_success'];
                     $exception_message = $fcmPush['exception_message'];
                 }
-            }
+            }*/
             
+            if(!(isset($data['is_gamification_reminder']) && $data['is_gamification_reminder'] == 1)){
             $update_log_data = array(
                     'is_success' => $is_success,
                     'status' => $is_success==1?'sent':'failed',
@@ -479,6 +480,7 @@ class MessagehubManager
                 $elasticData['eventName'] = "Failed";
             }
             SendLogToElastic::dispatch($elasticData)->onQueue('elastic_queue');
+            }
 
         }catch(Exception $e){
             Log::error($e);
@@ -636,10 +638,10 @@ class MessagehubManager
         return $this->messagehubRepository->getEmployeeCount($type, $employers, $filterTemplate, $appInstanceIds, $includeSpouseDependents, $includeDemoAccounts);
     }
 
-    public function getEmployerList($brokerList, $selectedEmployers = array(), $sms_enabled = false, $excludeBlockedEmployer = False)
+    public function getEmployerList($brokerList, $selectedEmployers = array(), $sms_enabled = false, $excludeBlockedEmployer = False, $onlyGamificationEmployer = False)
     {
         $this->messagehubRepository->setSmsEnabled($sms_enabled);
-        return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers, [], $excludeBlockedEmployer);
+        return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers, [], $excludeBlockedEmployer, $onlyGamificationEmployer);
     }
 
     public function getBrokerList($role)
@@ -667,8 +669,13 @@ class MessagehubManager
             if($notifications->sent_type == 'choose-app' && !empty($notifications->apps)){// If schedule by admin app wise
                 $this->processNotificationsByApp($notifications->apps);
             }else{
+                if(isset($notifications->is_gamification_reminder) && $notifications->is_gamification_reminder == 1){
+                    //get all avtive employers who have entry for Gamification
+                    $this->processGamificationReminderPushNotifications();
+                }else{
                 extract($this->messagehubRepository->getBrokerAndEmployerById($notifications->employers[0]));
                 extract($this->processNotifications($notifications->employers, $brokerId));
+            }
             }
 
             //Remove record from scheduled list
@@ -721,6 +728,28 @@ class MessagehubManager
                 continue;
             }
 
+            extract($this->processNotifications($employerIds, $brokerIds[0]));
+        }
+    }
+
+    /**
+     * Process each app and send data to prcoess for reminder push notifications
+     * @param 
+     * @return
+     */
+    public function processGamificationReminderPushNotifications()
+    {
+        $apps = $this->getAppList();
+        foreach ($apps as $key => $app) {
+            $brokerIds = $this->getAppBrokers([$app->id]);
+            if(empty($brokerIds)){
+                continue;
+            }
+            $employerIds = array_column($this->getEmployerList($brokerIds,[], true, True, True), 'id');
+
+            if(empty($employerIds)){
+                continue;
+            }
             extract($this->processNotifications($employerIds, $brokerIds[0]));
         }
     }
