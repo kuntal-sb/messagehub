@@ -721,14 +721,14 @@ class MessagehubManager
             if(empty($brokerIds)){
                 continue;
             }
-            //$excludeBlockedEmployer = True;
-            $employerIds = array_column($this->getEmployerList($brokerIds,[], true, True), 'id');
-
-            if(empty($employerIds)){
-                continue;
+            foreach($brokerIds as $brokerId){
+                $employerIds = array_column($this->getEmployerList([$brokerId],[], false, true), 'id');
+                Log::info("BROKER::". json_encode($brokerIds)." EMPLOYER::". json_encode($employerIds));
+                if(empty($employerIds)){
+                    continue;
+                }
+                extract($this->processNotifications($employerIds, $brokerId));
             }
-
-            extract($this->processNotifications($employerIds, $brokerIds[0]));
         }
     }
 
@@ -745,12 +745,14 @@ class MessagehubManager
             if(empty($brokerIds)){
                 continue;
             }
-            $employerIds = array_column($this->getEmployerList($brokerIds,[], true, True, True), 'id');
-
+            foreach($brokerIds as $brokerId){
+                $employerIds = array_column($this->getEmployerList([$brokerId],[], false, true, true), 'id');
+                Log::info("BROKER::". json_encode($brokerIds)." EMPLOYER::". json_encode($employerIds));
             if(empty($employerIds)){
                 continue;
             }
-            extract($this->processNotifications($employerIds, $brokerIds[0]));
+                extract($this->processNotifications($employerIds, $brokerId));
+            }
         }
     }
 

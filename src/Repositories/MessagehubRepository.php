@@ -992,7 +992,8 @@ class MessagehubRepository extends BaseRepository
                 
                 $fcmDataArr['data']['comment_type'] = $comment_type;
 
-                Log::info("FCM DATA: ".json_encode($fcmDataArr));
+        //Log::info("FCM DATA: ".json_encode($fcmDataArr));
+        Log::info("FCM DATA: ".json_encode($fcmDataArr)."  Message: ".$data['message']);
 
                 $fcmData->setPayload($fcmDataArr);
                 $client -> build($recipient, $notification, $fcmData);
