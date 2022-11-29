@@ -33,7 +33,7 @@ class NotificationMessageHub extends Model
         'valid_from',
         'expiry_date',
         'notification_type',
-        'post_category_id',
+        'category_id',
         'mapped_id',
         'created_at',
         'updated_at',
@@ -88,7 +88,7 @@ class NotificationMessageHub extends Model
      */
     public function postCategory(): BelongsTo
     {
-        return $this->belongsTo(\App\Models\Category::class, 'post_category_id');
+        return $this->belongsTo(\App\Models\Category::class, 'category_id');
     }
 
     /**
@@ -99,8 +99,8 @@ class NotificationMessageHub extends Model
         return $this
             ->hasManyThrough(
                 \App\Models\Tag::class,
-                \App\Models\NotificationMessageHubTagMapping::class,
-                'notification_message_id',
+                \App\Models\NotificationTags::class,
+                'notification_id',
                 'id',
                 'id',
                 'tag_id'
@@ -137,9 +137,9 @@ class NotificationMessageHub extends Model
                     'allow_sharing' => isset($requestData['allow_sharing'])?$requestData['allow_sharing']:0,
                     'sent_from'     => !empty($requestData['sent_from'])?$requestData['sent_from']:'HR Team',
                     'logo'          => !empty($requestData['logo'])?$requestData['logo']:'',
-                    'category_id'    => (isset($requestData['categoryId']))?$requestData['categoryId']:0,
-                    'post_category_id'    => (isset($requestData['post_category_id']))?$requestData['post_category_id']:0,
-                    'subcategory_id' => (isset($requestData['subCategoryId']))?$requestData['subCategoryId']:0,
+                    'template_category_id'    => (isset($requestData['categoryId']))?$requestData['categoryId']:0,
+                    'category_id'    => (isset($requestData['post_category_id']))?$requestData['post_category_id']:0,
+                    'template_subcategory_id' => (isset($requestData['subCategoryId']))?$requestData['subCategoryId']:0,
                     'userpost_learn_more' => (isset($requestData['allow_learn_more']))?$requestData['allow_learn_more']:0,
                     'created_from' => (isset($requestData['created_from']))?$requestData['created_from']:'notification',
                     'created_at'    => Carbon::now(),

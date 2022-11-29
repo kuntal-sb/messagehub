@@ -51,8 +51,7 @@ use Illuminate\Support\Facades\Bus;
 use Strivebenifits\Messagehub\Models\PinnedMessages;
 use App\Models\UserpostHashtagMapping;
 use App\Models\UserpostContentMapping;
-use App\Models\NotificationMessageHubTagMapping;
-use App\Models\UserpostTagMapping;
+use App\Models\NotificationTags;
 use App\Models\Roles;
 
 /**
@@ -538,14 +537,14 @@ class MessagehubRepository extends BaseRepository
                 if(isset($this->notificationData['userpost_tags']) && !empty($this->notificationData['userpost_tags'])){
                     $userpostTag = explode(",",$this->notificationData['userpost_tags']);
                     foreach($userpostTag as $hashtag){
-                        $checkExists = UserpostTagMapping::where(['message_id' => $messageId, 'userpost_tag_id' => $hashtag])->first();
+                        $checkExists = NotificationTags::where(['message_id' => $messageId, 'tag_id' => $hashtag])->first();
                         if(is_null($checkExists)){
                             $tagData = [
-                                'message_id' => $messageId, 
-                                'userpost_tag_id' => $hashtag, 
+                                'notification_id' => $messageId,
+                                'tag_id' => $hashtag,
                                 'created_at' => carbon::now()
                             ];
-                            UserpostTagMapping::insert($tagData);
+                            NotificationTags::insert($tagData);
                         }
                     }
                 }
@@ -808,13 +807,13 @@ class MessagehubRepository extends BaseRepository
         $tagMappingArray = [];
         foreach ($tags as $tag) {
             $tagMappingArray[] = [
-                'notification_message_id' => $notificationId,
+                'notification_id' => $notificationId,
                 'tag_id' => $tag,
                 'created_at' => Carbon::now(),
                 'updated_at' => Carbon::now()
             ];
         }
-        NotificationMessageHubTagMapping::insert($tagMappingArray);
+        NotificationTags::insert($tagMappingArray);
     }
 
     /**
@@ -860,7 +859,7 @@ class MessagehubRepository extends BaseRepository
                 $pushMessage['userId'] = $employeeId;
                 $pushMessage['message'] = $this->notificationData['message'];
                 if($this->notificationData['created_from'] == 'user_post') {
-                    $notificationMessageData = $notificationMessage->addSelect('notifications_message_hub.title','notifications_message_hub.message','notifications_message_hub.created_from',DB::raw('messagehub_template_subcategories.title as sub_cat_title'))->leftJoin('messagehub_template_subcategories','messagehub_template_subcategories.id','notifications_message_hub.subcategory_id')->first();
+                    $notificationMessageData = $notificationMessage->addSelect('notifications_message_hub.title','notifications_message_hub.message','notifications_message_hub.created_from',DB::raw('messagehub_template_subcategories.title as sub_cat_title'))->leftJoin('messagehub_template_subcategories','messagehub_template_subcategories.id','notifications_message_hub.template_subcategory_id')->first();
                     $pushMessage['title'] = $notificationMessageData->sub_cat_title;
                 }
                 $userRepository = app()->make(UsersRepository::class);
@@ -2066,7 +2065,7 @@ class MessagehubRepository extends BaseRepository
         $notifications = $this->model;
 
         return $notifications->select('notifications_message_hub.message','notifications_message_hub.title',DB::raw('messagehub_template_subcategories.title as sub_cat_title'),'notifications_message_hub.created_by','notifications_message_hub.created_from')
-            ->leftJoin('messagehub_template_subcategories','messagehub_template_subcategories.id','notifications_message_hub.subcategory_id')
+            ->leftJoin('messagehub_template_subcategories','messagehub_template_subcategories.id','notifications_message_hub.template_subcategory_id')
             ->where('notifications_message_hub.id', $messageId)
             ->first();
         
