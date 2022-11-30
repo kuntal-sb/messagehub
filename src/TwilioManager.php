@@ -5,6 +5,7 @@ namespace Strivebenifits\Messagehub;
 use Strivebenifits\Messagehub\Entities\TwilioResponseEntity;
 use Strivebenifits\Messagehub\Facades\TwilioClient;
 use Strivebenifits\Messagehub\Repositories\TwilioRepository;
+use App\Http\Repositories\TwilioWebhookDetailRepository;
 use Exception;
 use Log;
 
@@ -41,40 +42,20 @@ class TwilioManager
     {
         $number = $employeeData['phone_number'];
         $employeeId = $employeeData['id'];
-        $status = '';
-        $response = '';
         try {
             if (
                 TwilioClient::isEnabled()
                 && !empty($employerId)
                 && !empty($number)
             ) {
-                $number = $this->checkPhoneFormat(trim($number));
-                Log::info('Sending SMS to : '.$number);
+                $data = $this->sendOtp($number, $message);
 
-                $response = TwilioClient::send($number, $message);
-                $exceptionMessage = '';
-
-                if(gettype($response) == 'array' && !empty($response['error'])){
-                    $status = 'failed';
-                    $exceptionMessage = $response['error'];
-                }
-                else if ($response) {
-                    $status = 'success';
-                }else{
-                    $status = 'failed';
-                    $exceptionMessage = json_encode($response);
-                }
-
-                Log::info('Twilio '.$status.' : '.json_encode($response));
-
-                if(!$appNotDownloaded) {
-                    $this->twilioRepository->createLog(new TwilioResponseEntity($response, $employeeId, $employerId, $status, $number,$messageId,'message-hub', $exceptionMessage));
+                if(!$appNotDownloaded && !empty($data)) {
+                    $this->twilioRepository->createLog(new TwilioResponseEntity($data['response'], $employeeId, $employerId, $data['status'], $number,$messageId,'message-hub', $data['exception']));
                 }
             }
 
         } catch (Exception $e) {
-            $status = 'failed';
             Log::info($e->getMessage());
         }
 
@@ -90,14 +71,82 @@ class TwilioManager
         try {
 
             if (TwilioClient::isEnabled() && !empty($callBackFields)) {
-                return $this->twilioRepository
-                    ->updateLog($callBackFields);
+                if ($this->twilioRepository->findLogBySid($callBackFields['SmsSid'])) {
+                    return $this->twilioRepository
+                        ->updateLog($callBackFields);
+                } else {
+                    $twilioWebhookDetailRepository = app()->make(TwilioWebhookDetailRepository::class);
+                    return $twilioWebhookDetailRepository
+                        ->updateLog($callBackFields);
+                }
             }
 
         } catch (Exception $e) {
             Log::info($e->getMessage());
             throw $e;
         }
+    }
+
+    /**
+     * @param $number
+     * @param $message
+     * @param $employer_id
+     * @param $smsType
+     * @return false
+     * @throws Exception
+     */
+    public function sendMfaOtp($number, $message, $employerId, $smsType)
+    {
+        try {
+            $twilioWebhookDetailRepository = app()->make(TwilioWebhookDetailRepository::class);
+            if (
+                TwilioClient::isEnabled()
+                && !empty($employerId)
+                && !empty($number)
+            ) {
+                $data = $this->sendOtp($number, $message);
+
+                if (!empty($data)) {
+                    $twilioWebhookDetailRepository
+                        ->createLog(new TwilioResponseEntity($data['response'], 0, $employerId, $data['status'], $number, null, $smsType, $data['exception']));
+                }
+            }
+        } catch (Exception $e) {
+            Log::info($e->getMessage());
+            throw $e;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param $number
+     * @param $message
+     * @return array
+     */
+    public function sendOtp($number, $message)
+    {
+        $number = $this->checkPhoneFormat(trim($number));
+        Log::info('Sending SMS to : ' . $number);
+        $response = TwilioClient::send($number, $message);
+        $exceptionMessage = '';
+
+        if (gettype($response) == 'array' && !empty($response['error'])) {
+            $status = 'failed';
+            $exceptionMessage = $response['error'];
+        } else if ($response) {
+            $status = 'success';
+        } else {
+            $status = 'failed';
+            $exceptionMessage = json_encode($response);
+        }
+        Log::info('Twilio ' . $status . ' : ' . json_encode($response));
+
+        return [
+            'status' => $status,
+            'exception' => $exceptionMessage,
+            'response' => $response
+        ];
     }
 
     /**
