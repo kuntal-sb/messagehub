@@ -691,7 +691,7 @@ class MessagehubManager
                 //store into user timezone format
                 $notifications->next_at = $next_at;
 
-                if(strtotime($next_at) > strtotime($notifications->schedule_end_datetime)){
+                if(isset($notifications->schedule_end_datetime) && $notifications->schedule_end_datetime != null && strtotime($next_at) > strtotime($notifications->schedule_end_datetime)){
                     $notifications->next_at = '';
                     $notifications->next_scheduled_utc_time = '';
                     $notifications->status = 'Completed';

@@ -153,6 +153,7 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['created_as'] = !empty($data['created_as'])?$data['created_as']:getEmployerId();
         $this->notificationData['logo'] = !empty($data['logo_path'])?$data['logo_path']:'';
         $this->notificationData['thumbnail'] = !empty($data['thumbnail_path'])?$data['thumbnail_path']:'';
+        $this->notificationData['target_title'] = !empty($data['target_title'])?$data['target_title']:'';
         $this->notificationData['includeSpouseDependents'] = !empty($data['toggleSpouse'])? true: false;
         $this->notificationData['includeDemoAccounts'] = !empty($data['toggleDemoAccount'])? true: false;
 
@@ -1215,7 +1216,7 @@ class MessagehubRepository extends BaseRepository
         }
         if($eventData['is_repeated'] != 'does_not_repeat'){
             $eventData['next_at'] = nextEventOccurance($eventData, $eventData['schedule_datetime'], true);
-            if(strtotime($eventData['next_at']) > strtotime($eventData['schedule_end_datetime'])){
+            if(isset($eventData['schedule_end_datetime']) && $eventData['schedule_end_datetime'] != null && strtotime($eventData['next_at']) > strtotime($eventData['schedule_end_datetime'])){
                 $eventData['next_at'] = '';
                 $eventData['next_scheduled_utc_time'] = '';
             }else{

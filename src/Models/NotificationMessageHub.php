@@ -132,6 +132,7 @@ class NotificationMessageHub extends Model
                     'app_instance_ids'  => $requestData['send_to'] == 'send_to_app_instances'?implode(',',$requestData['appInstance']):'',
                     'valid_from'    => !empty($requestData['valid_from'])?date('Y-m-d',strtotime($requestData['valid_from'])):Carbon::now(),
                     'expiry_date'   => !empty($requestData['expiry_date'])?date('Y-m-d H:i:s',strtotime($requestData['expiry_date'])):'',
+                    'target_title'    => isset($requestData['target_title'])?$requestData['target_title']:'',
                     'target_screen'    => isset($requestData['target_screen'])?$requestData['target_screen']:'oehub',
                     'target_screen_param'    => isset($requestData['target_screen_param'])?$requestData['target_screen_param']:'',
                     'allow_sharing' => isset($requestData['allow_sharing'])?$requestData['allow_sharing']:0,
