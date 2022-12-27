@@ -538,7 +538,7 @@ class MessagehubRepository extends BaseRepository
                 if(isset($this->notificationData['userpost_tags']) && !empty($this->notificationData['userpost_tags'])){
                     $userpostTag = explode(",",$this->notificationData['userpost_tags']);
                     foreach($userpostTag as $hashtag){
-                        $checkExists = NotificationTags::where(['message_id' => $messageId, 'tag_id' => $hashtag])->first();
+                        $checkExists = NotificationTags::where(['notification_id' => $messageId, 'tag_id' => $hashtag])->first();
                         if(is_null($checkExists)){
                             $tagData = [
                                 'notification_id' => $messageId,
