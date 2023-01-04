@@ -846,6 +846,12 @@ class MessagehubRepository extends BaseRepository
                 ProcessGamificationRecognitionPointAllocation::dispatch($usersRewardPoint, $employeeId, $employerId, $mappedId, $this->notificationData['timeZoneOffset']);
             }
 
+            //Manage Post Recignition
+            Log::info("NOTIFICATION DATA::". json_encode($this->notificationData));
+            if($this->notificationData['is_recognition'] && !empty($this->notificationData['reward_receivers'])){
+                ProcessGamificationRecognitionPointAllocation::dispatch($this->notificationData['reward_receivers'], $employeeId, $employerId, $mappedId, $this->notificationData['timeZoneOffset']);
+            }
+
             //Extract tagged user and save them
             $userTagArr = array_unique(extractUserTag($this->notificationData['message']));
 

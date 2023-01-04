@@ -143,6 +143,8 @@ class NotificationMessageHub extends Model
                     'template_subcategory_id' => (isset($requestData['subCategoryId']))?$requestData['subCategoryId']:0,
                     'userpost_learn_more' => (isset($requestData['allow_learn_more']))?$requestData['allow_learn_more']:0,
                     'created_from' => (isset($requestData['created_from']))?$requestData['created_from']:'notification',
+                    'recognition_template_id' => !empty($requestData['recognition_template_id'])?$requestData['recognition_template_id']:'',
+                    'private_post'  => !empty($requestData['private_post'])?$requestData['private_post']:0,
                     'created_at'    => Carbon::now(),
                     'updated_at'    => Carbon::now()
                    );
