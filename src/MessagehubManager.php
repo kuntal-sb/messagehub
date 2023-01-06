@@ -16,6 +16,8 @@ use Illuminate\Bus\Batch;
 use Illuminate\Support\Facades\Bus;
 use App\Http\Repositories\GlobalSettingsRepository;
 use App\Http\Managers\ElasticManager;
+use App\Models\MessageMapping;
+use Strivebenifits\Messagehub\Models\NotificationMessageHub;
 
 class MessagehubManager
 {
@@ -1015,5 +1017,44 @@ class MessagehubManager
             "notificationRead" =>$notificationRead,
             "notificationEngagedCompleted" => $notificationEngagedCompleted
         ];
+    }
+
+    /**
+     * Process notifications for strive user level 
+     * @param $notificationData
+     * @return int
+     */
+    public function processStriveUserLevelNotifications($notificationData)
+    {
+        //Set notification data and type
+        $notificationMessageHub = app()->make(NotificationMessageHub::class);
+        $this->setNotificationType(config('messagehub.notification.type.INAPP'));
+
+        //Create single message hub entry for all the push and pass that message id in notification data to retain in all
+        $transactionId = $this->generateTransactionId(config('messagehub.notification.type.INAPP'));
+        $messageId = $notificationMessageHub->insertNotificationData(config('messagehub.notification.type.INAPP'), $transactionId, $notificationData);
+        $notificationData['message_id'] = $messageId;
+        $mappingDetails = ['new_message_id' => $messageId,'created_at' => Carbon::now()];
+        $mappedId = MessageMapping::insertGetId($mappingDetails);
+        $notificationMessage = $notificationMessageHub->where(['notifications_message_hub.id' => $messageId]);
+        $notificationMessage->update(['mapped_id' => $mappedId]);
+        $this->setNotificationData($notificationData);
+
+        $apps = $this->getAppList();
+        foreach ($apps as $key => $app) {
+            $brokerIds = $this->getAppBrokers([$app->id]);
+            if (empty($brokerIds)) {
+                continue;
+            }
+            foreach ($brokerIds as $brokerId) {
+                $employerIds = array_column($this->getEmployerList([$brokerId], [], false, true, true), 'id');
+                if (empty($employerIds)) {
+                    continue;
+                }
+                $this->processNotifications($employerIds, $brokerId);
+            }
+        }
+
+        return $messageId;
     }
 }

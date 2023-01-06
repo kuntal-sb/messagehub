@@ -53,6 +53,7 @@ use App\Models\UserpostHashtagMapping;
 use App\Models\UserpostContentMapping;
 use App\Models\NotificationTags;
 use App\Models\Roles;
+use App\Models\MongoDb\NotificationsMessageHubPushLog as NotificationsMessageHubPushLogMongo;
 
 /**
  * Class MessagehubRepository
@@ -156,6 +157,7 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['target_title'] = !empty($data['target_title'])?$data['target_title']:'';
         $this->notificationData['includeSpouseDependents'] = !empty($data['toggleSpouse'])? true: false;
         $this->notificationData['includeDemoAccounts'] = !empty($data['toggleDemoAccount'])? true: false;
+        $this->notificationData['message_id'] = !empty($data['message_id']) && !empty($data['created_from']) && $data['created_from'] == 'strive_user_level'? $data['message_id']: null;
 
         /*if(!empty($this->notificationData['categoryId']) && !empty($this->notificationData['subCategoryId'])) {
             $this->notificationData['includeSpouseDependents'] = true;
@@ -489,11 +491,24 @@ class MessagehubRepository extends BaseRepository
                 $is_gamification_reminder = 1;
             }
 
+            //code for strive user level
+            $striveUserLevel = 0;
+            if(!empty($this->notificationData['created_from']) && $this->notificationData['created_from'] == 'strive_user_level'){
+                $striveUserLevel = 1;
+            }
+
             if($this->isResend || $is_gamification_reminder == 1){
                 $messageId = ($this->isResend) ? $this->notificationData['id'] : '';
                 $pushMessageId = ($this->isResend) ? $this->resendData['id'] : '';
             }else{
-                $messageId = $this->addNotification($employerId, true, $employeeArr);
+                //$messageId = $this->addNotification($employerId, true, $employeeArr);
+
+                if(!$striveUserLevel) {
+                    $messageId = $this->addNotification($employerId, true, $employeeArr);
+                }
+                if($striveUserLevel && !empty($this->notificationData['message_id'])) {
+                    $messageId = $this->notificationData['message_id'];
+                }
 
                 if(!empty($this->notificationData['content_id'])){
                     $contentId = $this->notificationData['content_id'];
@@ -1308,6 +1323,20 @@ class MessagehubRepository extends BaseRepository
         }
 
         $log = NotificationMessageHubPushLog::create($insert_data);
+
+        //Insert push log data into mongodbb collection notificationsMessageHubPushLog
+        $levelPushData = new NotificationsMessageHubPushLogMongo();
+        $levelPushData->employee_id = $insert_data['employee_id'];
+        $levelPushData->employer_id = $insert_data['employer_id'];
+        $levelPushData->message_id = $insert_data['message_id'];
+        $levelPushData->read_status = $insert_data['read_status'];
+        $levelPushData->open_status = $insert_data['open_status'] ?? 0;
+        $levelPushData->completed_status = $insert_data['completed_status'] ?? 0;
+        $levelPushData->status = !empty($messageStatus) ? $messageStatus : 'sent';
+        $levelPushData->is_success = $insert_data['is_success'];
+        $levelPushData->exception_message = $insert_data['exception_message'];
+        $levelPushData->save();
+        // return $levelPushData->id;
         return $log->id;
     }
 
