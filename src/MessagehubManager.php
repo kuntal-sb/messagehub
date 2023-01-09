@@ -1057,4 +1057,16 @@ class MessagehubManager
 
         return $messageId;
     }
+
+    /**
+     * Process notifications for strive user level 
+     * @param $notificationData
+     * @return int
+     */
+    public function processStriveUserLevelEmailNotifications($notificationData, $employeeData)
+    {
+        $this->setNotificationData($notificationData);
+        $this->setNotificationType($notificationData['notification_type']);
+        $this->messagehubRepository->dispatchEmailNotification($employeeData, $notificationData['created_by']);
+    }
 }
