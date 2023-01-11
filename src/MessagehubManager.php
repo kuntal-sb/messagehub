@@ -18,6 +18,7 @@ use App\Http\Repositories\GlobalSettingsRepository;
 use App\Http\Managers\ElasticManager;
 use App\Models\MessageMapping;
 use Strivebenifits\Messagehub\Models\NotificationMessageHub;
+use App\Models\Roles;
 
 class MessagehubManager
 {
@@ -227,19 +228,26 @@ class MessagehubManager
     public function resendNotifications($notification, $request)
     {
         $notificationDetails = [];
+
+        if($this->checkStriveUserLevelNotificationByRole($notification)) {
+            if(Session::get('role') == Roles::ROLE_BROKER) {
+                $notificationDetails = $request->type == 'email' ? $notification->emailNotificationsByBroker() : $notification->pushNotificationsByBroker();
+            } else {
+                $notificationDetails = $request->type == 'email' ? $notification->emailNotificationsByEmployer() : $notification->pushNotificationsByEmployer();
+            }
+        } else {
+            $notificationDetails = $request->type == 'email' ? $notification->emailNotifications() : $notification->pushNotifications();
+        }
+
         switch ($request->action) {
             case 'failed':
-                $notificationDetails = $notification->pushNotifications()->whereIn('status', ['failed', 'App Not Downloaded']);
+                $notificationDetails = $notificationDetails->whereIn('status', ['failed', 'App Not Downloaded']);
                 break;
             case 'not-opened':
-                $notificationDetails = $notification->pushNotifications()->whereNotIn('status',['failed', 'App Not Downloaded'])->where('open_status', 0)->where('delivered_status', 0);
+                $notificationDetails = $notificationDetails->whereNotIn('status',['failed', 'App Not Downloaded'])->where('open_status', 0)->where('delivered_status', 0);
                 break;
             case 'all':
-                if($request->type == 'email'){
-                    $notificationDetails = $notification->emailNotifications();
-                }else{
-                $notificationDetails = $notification->pushNotifications();
-                }
+                //
                 break;
             default:
                 // code...
@@ -494,11 +502,11 @@ class MessagehubManager
      * @param user ID
      * @return Collection notificationDetails
      */
-    public function getNotificationLogCount($id, $notificationType)
+    public function getNotificationLogCount($id, $notificationType, $striveUserNotification = false)
     {   
         $countData = [];
         if(in_array($notificationType, [config('messagehub.notification.type.INAPP'), config('messagehub.notification.type.INAPPTEXT')])){
-            $countData['push-notification'] = (array) $this->messagehubRepository->getPushNotificationLogCount($id);
+            $countData['push-notification'] = (array) $this->messagehubRepository->getPushNotificationLogCount($id, $striveUserNotification);
         }
         if(in_array($notificationType, [config('messagehub.notification.type.TEXT'), config('messagehub.notification.type.INAPPTEXT')])){
             $countData['text-notification'] = (array) $this->messagehubRepository->getTextNotificationLogCount($id);
@@ -1068,5 +1076,15 @@ class MessagehubManager
         $this->setNotificationData($notificationData);
         $this->setNotificationType($notificationData['notification_type']);
         $this->messagehubRepository->dispatchEmailNotification($employeeData, $notificationData['created_by']);
+    }
+
+    /**
+     * Check notification created from value and manage notification data based on employer/borker for strive user level notification
+     * @param $notification
+     * @return bool
+     */
+    public function checkStriveUserLevelNotificationByRole($notification){
+         return $notification->created_from == NotificationMessageHub::TYPE_STRIVE_USER_LEVEL &&
+          (getEmployerId() || (getBrokerId() && Session::get('role') == Roles::ROLE_BROKER));]
     }
 }

@@ -40,6 +40,8 @@ class NotificationMessageHub extends Model
         'deleted_at'
     ];
 
+    public const TYPE_STRIVE_USER_LEVEL = 'strive_user_level'
+
 
     /**
      * Get the Push Notifications Logs
@@ -160,5 +162,40 @@ class NotificationMessageHub extends Model
     {
         $message = str_replace("&nbsp;"," ",$message);
         return trim(strip_tags($message,'<user-tag><user-reward>'));
+    }
+
+
+    /**
+     * Get the Push Notifications Logs by employer
+     */
+    public function pushNotificationsByEmployer()
+    {
+        return $this->hasMany(NotificationMessageHubPushLog::class,'message_id','id')->where('employer_id', getEmployerId());
+    }
+
+    /**
+     * Get the Push Notifications Logs by broker
+     */
+    public function pushNotificationsByBroker()
+    {
+        return $this->hasMany(NotificationMessageHubPushLog::class,'message_id','id')
+            ->whereRaw("employee_id IN ". DB::raw("(SELECT id from users where users.broker_id = ". getBrokerId() .")"));
+    }
+
+     /**
+     * Get the Email Logs by employer
+     */
+    public function emailNotificationsByEmployer()
+    {
+        return $this->hasMany(NotificationMessageHubEmailLog::class,'message_id','id')->where('employer_id', getEmployerId());
+    }
+
+    /**
+     * Get the Email Logs by broker
+     */
+    public function emailNotificationsByBroker()
+    {
+        return $this->hasMany(NotificationMessageHubEmailLog::class,'message_id','id')
+        ->whereRaw("employee_id IN ". DB::raw("(SELECT id from users where users.broker_id = ". getBrokerId() .")"));
     }
 }

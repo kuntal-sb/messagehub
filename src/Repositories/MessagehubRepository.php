@@ -396,7 +396,7 @@ class MessagehubRepository extends BaseRepository
      * @return Collection notificationDetails
      */
     public function getNotificationById($id){
-        return $this->model::with('pushNotifications','textNotifications','pushNotifications.employee')->find($id);
+        return $this->model::with('pushNotifications','textNotifications','pushNotifications.employee', 'pushNotificationsByEmployer', 'pushNotificationsByBroker')->find($id);
     }
 
     /**
@@ -1368,13 +1368,23 @@ class MessagehubRepository extends BaseRepository
      * @param $messageId
      * @return array 
      */
-    public function getPushNotificationLogCount($message_id)
+    public function getPushNotificationLogCount($message_id, $striveUserNotification = false)
     {
-        return DB::table('notifications_message_hub_push_log')
-            ->selectRaw(
-                "sum(case when STATUS = 'sent' then 1 else 0 end) as sent, sum(case when STATUS = 'delivered' then 1 else 0 end) as delivered, sum(case when STATUS = 'opened' then 1 else 0 end) as open, sum(case when STATUS = 'engaged' then 1 else 0 end) as engaged, sum(case when STATUS = 'completed' then 1 else 0 end) as completed, sum(case when STATUS = 'App Not Downloaded' then 1 else 0 end) as app_not_downloaded, sum(case when STATUS = 'read' then 1 else 0 end) as `read`, sum(case when STATUS = 'failed' then 1 else 0 end) as failed"
-            )
-            ->where('message_id', $message_id)->first();
+        $query = DB::table('notifications_message_hub_push_log')
+        ->selectRaw(
+            "sum(case when STATUS = 'sent' then 1 else 0 end) as sent, sum(case when STATUS = 'delivered' then 1 else 0 end) as delivered, sum(case when STATUS = 'opened' then 1 else 0 end) as open, sum(case when STATUS = 'engaged' then 1 else 0 end) as engaged, sum(case when STATUS = 'completed' then 1 else 0 end) as completed, sum(case when STATUS = 'App Not Downloaded' then 1 else 0 end) as app_not_downloaded, sum(case when STATUS = 'read' then 1 else 0 end) as `read`, sum(case when STATUS = 'failed' then 1 else 0 end) as failed"
+        );
+
+        if ($striveUserNotification) {
+            if (Session::get('role') == Roles::ROLE_BROKER) {
+                $query->join('users','users.id','=','notifications_message_hub_push_log.employee_id');
+                $query->where('users.broker_id', getBrokerId());
+            } else {
+                $query->where('employer_id', getEmployerId());
+            }
+        }
+
+        return $query->where('message_id', $message_id)->first();
     }
 
     /**
@@ -2116,7 +2126,16 @@ class MessagehubRepository extends BaseRepository
      */
     public function getNotificationUserActionBasedOnFlag($notification, $status)
     {
-        $userActionDetails = $notification->pushNotifications();
+
+        if($notification->created_from == 'strive_user_level') {
+            if(getEmployerId()) {
+                $userActionDetails = $notification->pushNotificationsByEmployer();
+            } else {
+                $userActionDetails = $notification->pushNotificationsByBroker();
+            }
+        } else {
+            $userActionDetails = $notification->pushNotifications();
+        }
 
         if($status == "opened"){
             $userActionDetails = $userActionDetails->where([['open_status', 1],['engaged_status', 0],['completed_status',0],['read_status',0]]);
