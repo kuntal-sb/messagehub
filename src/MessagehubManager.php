@@ -1085,6 +1085,6 @@ class MessagehubManager
      */
     public function checkStriveUserLevelNotificationByRole($notification){
          return $notification->created_from == NotificationMessageHub::TYPE_STRIVE_USER_LEVEL &&
-          (getEmployerId() || (getBrokerId() && Session::get('role') == Roles::ROLE_BROKER));]
+          (getEmployerId() || (getBrokerId() && Session::get('role') == Roles::ROLE_BROKER));
     }
 }
