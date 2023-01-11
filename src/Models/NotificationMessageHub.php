@@ -40,7 +40,7 @@ class NotificationMessageHub extends Model
         'deleted_at'
     ];
 
-    public const TYPE_STRIVE_USER_LEVEL = 'strive_user_level'
+    public const TYPE_STRIVE_USER_LEVEL = 'strive_user_level';
 
 
     /**
