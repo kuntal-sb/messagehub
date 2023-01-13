@@ -1087,4 +1087,31 @@ class MessagehubManager
          return $notification->created_from == NotificationMessageHub::TYPE_STRIVE_USER_LEVEL &&
           (getEmployerId() || (getBrokerId() && Session::get('role') == Roles::ROLE_BROKER));
     }
+
+    /**
+     * Process notifications for explore module when send from admin  
+     * @param $notificationData
+     * @return int
+     */
+    public function processBlogContentNotifications($notificationData)
+    {
+        //Set notification data and type
+        $this->setNotificationType(config('messagehub.notification.type.INAPP'));
+        $this->setNotificationData($notificationData);
+
+        $apps = $this->getAppList();
+        foreach ($apps as $key => $app) {
+            $brokerIds = $this->getAppBrokers([$app->id]);
+            if (empty($brokerIds)) {
+                continue;
+            }
+            foreach ($brokerIds as $brokerId) {
+                $employerIds = array_column($this->getEmployerList([$brokerId], [], false, true, true), 'id');
+                if (empty($employerIds)) {
+                    continue;
+                }
+                $this->processNotifications($employerIds, $brokerId);
+            }
+        }
+    }
 }
