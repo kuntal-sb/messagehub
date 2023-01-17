@@ -847,7 +847,7 @@ class MessagehubRepository extends BaseRepository
                 $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData);
                 $userRepository = app()->make(UsersRepository::class);
                 $loggedAsAdmin  = $userRepository->checkUsersByRole($employeeId, [Roles::ROLE_ADMIN]);
-                if(($loggedAsAdmin && $this->notificationType == config('messagehub.notification.type.INAPP')) || $this->notificationData['created_from'] == 'user_post') {
+                if($this->notificationType == config('messagehub.notification.type.INAPP') || $this->notificationType == config('messagehub.notification.type.INAPPTEXT') || $this->notificationData['created_from'] == 'user_post') {
                         $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData, $employerId);
                 }
             }
