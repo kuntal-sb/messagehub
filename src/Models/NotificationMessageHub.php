@@ -35,6 +35,7 @@ class NotificationMessageHub extends Model
         'notification_type',
         'category_id',
         'mapped_id',
+        'challenge_id',
         'created_at',
         'updated_at',
         'deleted_at'
@@ -147,6 +148,7 @@ class NotificationMessageHub extends Model
                     'created_from' => (isset($requestData['created_from']))?$requestData['created_from']:'notification',
                     'recognition_template_id' => !empty($requestData['recognition_template_id'])?$requestData['recognition_template_id']:'',
                     'private_post'  => !empty($requestData['private_post'])?$requestData['private_post']:0,
+                    'challenge_id'  => !empty($requestData['challenge_id'])?$requestData['challenge_id']: 0,
                     'created_at'    => Carbon::now(),
                     'updated_at'    => Carbon::now()
                    );
