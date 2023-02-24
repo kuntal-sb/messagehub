@@ -605,7 +605,7 @@ class MessagehubRepository extends BaseRepository
                     $logID = $this->insertNotificationLog($send_data, $messageId, $messageStatus);
 
                     // Send Email/Text message to users who has not downloaded app. message will not send for user post(from mobile)
-                    if($deviceToken == '' && $this->notificationData['created_from'] != 'user_post'){
+                    if($deviceToken == '' && (!in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post']))){
                         ProcessBulkEmailNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
                         //ProcessBulkTextNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
                     }
@@ -847,8 +847,19 @@ class MessagehubRepository extends BaseRepository
                 $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData);
                 $userRepository = app()->make(UsersRepository::class);
                 $loggedAsAdmin  = $userRepository->checkUsersByRole($employeeId, [Roles::ROLE_ADMIN]);
-                if($this->notificationType == config('messagehub.notification.type.INAPP') || $this->notificationType == config('messagehub.notification.type.INAPPTEXT') || $this->notificationData['created_from'] == 'user_post') {
-                        $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData, $employerId);
+                if($this->notificationType == config('messagehub.notification.type.INAPP') || $this->notificationType == config('messagehub.notification.type.INAPPTEXT')) {
+
+                    //Remove Employee Id who have created post
+                    if (($key = array_search($this->notificationData['created_by'], $employeeArr)) !== false) {
+                        unset($employeeArr[$key]);
+                    }
+
+                    $notification_type = config('notification.NOTIFICATION_ELK_TYPE.PRIORITY');
+                    if(in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post'])){
+                        $notification_type = config('notification.NOTIFICATION_ELK_TYPE.GENERAL');
+                    }
+
+                    $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData, $employerId, $notification_type);
                 }
             }
             

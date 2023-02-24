@@ -392,7 +392,7 @@ class MessagehubManager
                 $logID  = $data['push_message_id'];
             }else{
                 $messageStatus = '';
-                if(isset($data['created_from']) && $data['created_from'] == 'user_post' && $data['created_by'] == $data['employee_id']){
+                if(isset($data['created_from']) && in_array($data['created_from'], ['user_post','recognition_user_post','customised_challenge_post']) && $data['created_by'] == $data['employee_id'] && ){
                     $messageStatus = 'read';
                 }
                 $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id, $messageStatus);
@@ -400,8 +400,8 @@ class MessagehubManager
             }
             $globalSettingsRepository = app()->make(GlobalSettingsRepository::class);
             $globalSettingData = $globalSettingsRepository->first(['field' => 'USER_GENERATED_POST']);
-            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && $data['created_from'] == 'user_post' && $globalSettingData->value == "0")){
-                if(isset($data['created_from']) && $data['created_from'] == 'user_post'){
+            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && in_array($data['created_from'], ['user_post','recognition_user_post','customised_challenge_post']) && $globalSettingData->value == "0")){
+                if(isset($data['created_from']) && in_array($data['created_from'], ['user_post'])){
                     $messagehubData = $this->messagehubRepository->getNotificationsWithSubCategory($message_id);
                     $data['title'] = $messagehubData->sub_cat_title;
                 }
