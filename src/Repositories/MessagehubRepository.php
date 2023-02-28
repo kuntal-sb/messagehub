@@ -850,8 +850,19 @@ class MessagehubRepository extends BaseRepository
                 if($this->notificationType == config('messagehub.notification.type.INAPP') || $this->notificationType == config('messagehub.notification.type.INAPPTEXT')) {
 
                     //Remove Employee Id who have created post
+                    foreach($employeeArr as $mainKey=>$valueEmployeeArr){
+                        if(!is_array($valueEmployeeArr)) {
                     if (($key = array_search($this->notificationData['created_by'], $employeeArr)) !== false) {
                         unset($employeeArr[$key]);
+                            }
+                            break;
+                        }else{
+                            if (($key = array_search($this->notificationData['created_by'], $valueEmployeeArr)) !== false) {
+                                unset($valueEmployeeArr[$key]);
+                                unset($employeeArr[$mainKey]);
+                                $employeeArr[$mainKey] = array_values($valueEmployeeArr);
+                            }
+                        }
                     }
 
                     $notification_type = config('notification.NOTIFICATION_ELK_TYPE.PRIORITY');
