@@ -930,6 +930,8 @@ class MessagehubManager
         $where= ['message_id'=> $id];
         $update_data['updated_at'] = Carbon::now();
         $this->messagehubRepository->updateNotificationLogByParam($where, $update_data);
+
+        $elasticManager->deleteElkPostNotificationsByParams(config('analytics.strive_global_notification'), $id);
     }
 
     /**
