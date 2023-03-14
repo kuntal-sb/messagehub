@@ -219,7 +219,10 @@ class MessagehubRepository extends BaseRepository
                 break;
             case config('role.BROKEREMPLOYEE'):
                 //$employers = [Session::get('employerId')];
-                $employers = array_column($this->getEmployerList($userid), 'id');
+            
+                //get refererId of logged in user
+                $brokerId = User::where('id',$userid)->select('referer_id')->first()->referer_id;
+                $employers = array_column($this->getEmployerList($brokerId), 'id');
                 break;
             default:
                 if(loggedinAsEmployer()){
