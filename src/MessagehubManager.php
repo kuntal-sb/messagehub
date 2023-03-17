@@ -19,6 +19,7 @@ use App\Http\Managers\ElasticManager;
 use App\Models\MessageMapping;
 use Strivebenifits\Messagehub\Models\NotificationMessageHub;
 use App\Models\Roles;
+use App\Http\Repositories\NewAppUserRepository;
 
 class MessagehubManager
 {
@@ -386,8 +387,20 @@ class MessagehubManager
             $message_id = $data['message_id'];
             Log::info('Message Data : '.json_encode($data));
             //$fcm_key = $data['fcm_key'];
+
+            //CHECK FOR NEW APP USER
+            $newAppUserRepository = app()->make(NewAppUserRepository::class);
+            $isNewAppUser = $newAppUserRepository->first(['user_id' => $data['employee_id'],'type' => 'new_app_user']);
+
+            if($isNewAppUser){
+                //If New APP user get unread count from ELK for bell-notification-list
+                $elasticRepository = app()->make(ElasticRepository::class);
+                $unreadCount = $elasticRepository->getUnreadNotificationCounts($data['employee_id']);
+            }else{
             //Get badge count // Add one for the new message
             $unreadCount = $this->unreadNotificationMessages($data['employee_id'],date('Y-m-d', 0)) + $this->unreadOldNotificationMessages($data['employee_id'],date('Y-m-d', 0));
+            }
+
             if(isset($data['is_resend']) && $data['is_resend'] || (isset($data['isCommentOrReply']) && $data['isCommentOrReply']) || (isset($data['is_gamification_reminder']) && $data['is_gamification_reminder'] == 1)){
                 $logID  = $data['push_message_id'];
             }else{
@@ -396,7 +409,9 @@ class MessagehubManager
                     $messageStatus = 'read';
                 }
                 $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id, $messageStatus);
+                if(!$isNewAppUser){
                 $unreadCount = $unreadCount + 1;
+                }
             }
             $globalSettingsRepository = app()->make(GlobalSettingsRepository::class);
             $globalSettingData = $globalSettingsRepository->first(['field' => 'USER_GENERATED_POST']);
