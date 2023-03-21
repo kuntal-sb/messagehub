@@ -941,12 +941,12 @@ class MessagehubManager
     {
         $this->messagehubRepository->deleteByParams(['id'=>$id]);
         $elasticManager = app()->make(ElasticManager::class);
-        $elasticManager->deleteElkDocByParams(config('analytics.strive_global_connect'), ['message_id' => $id]);
         $where= ['message_id'=> $id];
         $update_data['updated_at'] = Carbon::now();
         $this->messagehubRepository->updateNotificationLogByParam($where, $update_data);
 
-        $elasticManager->deleteElkPostNotificationsByParams(config('analytics.strive_global_notification'), $id);
+        $elasticManager->deleteElkDocByParams(config('analytics.strive_global_connect'), ['message_id' => $id], 'notification_elastic_crud_process_queue');
+        $elasticManager->deleteElkPostNotificationsByParams(config('analytics.strive_global_notification'), $id, null, null, null, 'notification_elastic_crud_process_queue');
     }
 
     /**
