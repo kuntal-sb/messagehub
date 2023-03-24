@@ -20,6 +20,7 @@ use App\Models\MessageMapping;
 use Strivebenifits\Messagehub\Models\NotificationMessageHub;
 use App\Models\Roles;
 use App\Http\Repositories\NewAppUserRepository;
+use App\Http\Repositories\NotificationSettingUserMappingRepository;
 
 class MessagehubManager
 {
@@ -437,45 +438,30 @@ class MessagehubManager
         try {
 
             $comment_type = isset($data['comment_type']) ? $data['comment_type'] : '';
-            
             $pushMessage = htmlspecialchars(trim(processPushNotificationText($data['message'])));
 
-            //If the user is from flutter app
-            // if(isset($data['is_flutter']) && $data['is_flutter'] == 1){
+            //send push notification & check user settings before send
+            $sendPushNotification = 1;
+
+            if(!(isset($data['isCommentOrReply']) && $data['isCommentOrReply'])  && !(isset($data['is_gamification_reminder']) && $data['is_gamification_reminder'] == 1)){
+                $notificationSettingUserMappingRepository = app()->make(NotificationSettingUserMappingRepository::class);
+                $notificationSettingData = $notificationSettingUserMappingRepository->first(['user_id' => $data['employee_id']]);
+
+                if($notificationSettingData){
+                    if($notificationSettingData->company_updates != 1){
+                        $sendPushNotification = 0;
+                    }
+                }
+            }
+
+            $is_success = 0;
+            $exception_message = '';
+            if($sendPushNotification == 1){
                 $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$message_id);
                 Log::info(json_encode($fcmPush));
                 $is_success = $fcmPush['is_success'];
                 $exception_message = $fcmPush['exception_message'];
-            /*}else{
-                //Old Logic
-                //If the device is ios, first hit APNS.
-                if($data['device_type'] === 'appNameIOS'){
-                    try{
-                        Log::info('--inside apn--');
-                        $url = env('APNS_URL').$data['device_token'];
-
-                        $iosPayload = array('badge' => $unreadCount,'custom' => array('customData' => array('notification_id' => $logID)));
-                        $app_store_target = $data['app_store_target'];
-                        extract($this->messagehubRepository->sendApns($url,$app_store_target,$unreadCount,$message_id,$pushMessage,$data['ios_certificate_file'], $data, $comment_type));
-
-                        $is_success = $status==200?1:0;
-                        $exception_message = $message;
-                    }
-                    catch(Exception $e){
-                        Log::error(' apn error'.$e->getMessage());
-                        //If exception occurred, then hit FCM for the old live apps.
-                    $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$message_id,$comment_type);
-                        Log::info('--ios fcm push--'.json_encode($fcmPush));
-                        $is_success = $fcmPush['is_success'];
-                        $exception_message = $fcmPush['exception_message'];
-                    }
-                }else{//For android hit fcm push notification
-                $fcmPush = $this->messagehubRepository->fcmPush($data,$unreadCount,$message_id,$comment_type);
-                    Log::info(json_encode($fcmPush));
-                    $is_success = $fcmPush['is_success'];
-                    $exception_message = $fcmPush['exception_message'];
-                }
-            }*/
+            }
             
             if(!(isset($data['is_gamification_reminder']) && $data['is_gamification_reminder'] == 1)){
             $update_log_data = array(
