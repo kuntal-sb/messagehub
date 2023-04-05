@@ -2063,7 +2063,9 @@ class MessagehubRepository extends BaseRepository
 
             $data['updated_at'] = date('Y-m-d') . 'T' . date('H:i:s') . '.000Z';
 
-            $elasticManager->updateElkDocByParams(config('analytics.strive_global_connect'), $recordId, $data);
+            if(!empty($recordId)) {
+                $elasticManager->updateElkDocByParams(config('analytics.strive_global_connect'), $recordId, $data);
+            }
             return $response = ['status_code' => 200,'message' => 'Message updated successfully'];
         }
         catch (Exception $e) {
