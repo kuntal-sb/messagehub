@@ -848,9 +848,12 @@ class MessagehubRepository extends BaseRepository
             if(!empty($employeeArr)){
                 $elasticManager = app()->make(ElasticManager::class);
                 $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData);
-                $userRepository = app()->make(UsersRepository::class);
-                $loggedAsAdmin  = $userRepository->checkUsersByRole($employeeId, [Roles::ROLE_ADMIN]);
-                if($this->notificationType == config('messagehub.notification.type.INAPP') || $this->notificationType == config('messagehub.notification.type.INAPPTEXT')) {
+                //$userRepository = app()->make(UsersRepository::class);
+                //$loggedAsAdmin  = $userRepository->checkUsersByRole($employeeId, [Roles::ROLE_ADMIN]);
+
+                //Ticket: https://strive.atlassian.net/browse/BP-2654
+                //If challenge is created with send_as_community_post checked then prevent its elk notification store to hide multiple bell notifications
+                if($this->notificationData['created_from'] != 'customised_challenge_notification' && ($this->notificationType == config('messagehub.notification.type.INAPP') || $this->notificationType == config('messagehub.notification.type.INAPPTEXT'))) {
 
                     //Remove Employee Id who have created post
                     foreach($employeeArr as $mainKey=>$valueEmployeeArr){

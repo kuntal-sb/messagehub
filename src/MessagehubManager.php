@@ -710,6 +710,7 @@ class MessagehubManager
                     //change status back to scheduled for next recurring event
                     $notifications->status = 'Scheduled';
                 }
+                $notifications->executed_at[] = date('Y-m-d H:i:s');
                 $notifications->save();
             }
 
