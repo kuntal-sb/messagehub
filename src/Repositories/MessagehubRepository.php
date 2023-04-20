@@ -158,7 +158,7 @@ class MessagehubRepository extends BaseRepository
         $this->notificationData['target_title'] = !empty($data['target_title'])?$data['target_title']:'';
         $this->notificationData['includeSpouseDependents'] = !empty($data['toggleSpouse'])? true: false;
         $this->notificationData['includeDemoAccounts'] = !empty($data['toggleDemoAccount'])? true: false;
-        $this->notificationData['message_id'] = !empty($data['message_id']) && !empty($data['created_from']) && $data['created_from'] == 'strive_user_level'? $data['message_id']: null;
+        $this->notificationData['message_id'] = !empty($data['message_id']) && !empty($data['created_from']) && $data['created_from'] == config('messagehub.post_type.global_raffle')? $data['message_id']: null;
 
         /*if(!empty($this->notificationData['categoryId']) && !empty($this->notificationData['subCategoryId'])) {
             $this->notificationData['includeSpouseDependents'] = true;
@@ -497,7 +497,7 @@ class MessagehubRepository extends BaseRepository
 
             //code for strive user level
             $striveUserLevel = 0;
-            if(!empty($this->notificationData['created_from']) && $this->notificationData['created_from'] == 'strive_user_level'){
+            if(!empty($this->notificationData['created_from']) && $this->notificationData['created_from'] == config('messagehub.post_type.global_raffle')){
                 $striveUserLevel = 1;
             }
 
@@ -2177,7 +2177,7 @@ class MessagehubRepository extends BaseRepository
     public function getNotificationUserActionBasedOnFlag($notification, $status)
     {
 
-        if($notification->created_from == 'strive_user_level') {
+        if($notification->created_from == config('messagehub.post_type.global_raffle')) {
             if(getEmployerId()) {
                 $userActionDetails = $notification->pushNotificationsByEmployer();
             } else {

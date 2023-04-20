@@ -41,9 +41,6 @@ class NotificationMessageHub extends Model
         'deleted_at'
     ];
 
-    public const TYPE_STRIVE_USER_LEVEL = 'strive_user_level';
-
-
     /**
      * Get the Push Notifications Logs
      */
