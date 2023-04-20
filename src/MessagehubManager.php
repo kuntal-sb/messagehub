@@ -1123,7 +1123,7 @@ class MessagehubManager
      */
     public function checkStriveUserLevelNotificationByRole($notification){
         if ($notification) {
-            return $notification->created_from == NotificationMessageHub::TYPE_STRIVE_USER_LEVEL &&
+            return $notification->created_from == config('messagehub.post_type.global_raffle') &&
                 (getEmployerId() || (getBrokerId() && Session::get('role') == Roles::ROLE_BROKER));
         }
         return false;
