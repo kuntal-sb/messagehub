@@ -31,6 +31,7 @@ use Illuminate\Database\Eloquent\Builder;
 use App\Http\Repositories\FilterTemplateBlocksRepository;
 use App\Http\Repositories\FilterTemplateDynamicFieldsRepository;
 use App\Http\Repositories\UsersRepository;
+use App\Http\Repositories\AutomatedNotificationDataRepository;
 use App\Mail\NotificationEmail;
 use Mail;
 use App\Http\Managers\TemplateManager;
@@ -892,6 +893,27 @@ class MessagehubRepository extends BaseRepository
             //Manage Post Recignition
             if(isset($this->notificationData['reward_receivers']) && !empty($this->notificationData['reward_receivers'])){
                 ProcessGamificationRecognitionPointAllocation::dispatch($this->notificationData['reward_receivers'], $employeeId, $employerId, $mappedId, $this->notificationData);
+            }
+
+            //Save related data for Birthday wishes & Workaniversery
+            if(!empty($this->notificationData['created_from']) && ($this->notificationData['created_from'] == 'birthday_wishes' || $this->notificationData['created_from'] == 'work_anniversary_wishes')){
+
+                if(!empty($this->notificationData['automated_employees'])){
+                    $automatedEmployeesData = [];
+                    $created_at = Date('Y-m-d H:i:s');
+                    foreach($this->notificationData['automated_employees'] as $automatedEmployee){
+
+                        $yearCompleted = null;
+                        if($this->notificationData['created_from'] == 'work_anniversary_wishes'){
+                            $yearCompleted = Date('Y') -  Carbon::createFromFormat('Y-m-d', $automatedEmployee['hire_date'])->format('Y');
+                        }
+
+                        $automatedEmployeesData[] = ['message_id' => $notificationMessageId, 'user_id' => $automatedEmployee['id'], 'year_completed' => $yearCompleted, 'created_at' => $created_at];
+                    }
+
+                    $automatedNotificationDataRepository = app()->make(AutomatedNotificationDataRepository::class);
+                    $automatedNotificationDataRepository->insert($automatedEmployeesData);
+                }
             }
 
             //Extract tagged user and save them

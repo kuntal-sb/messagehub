@@ -21,6 +21,7 @@ use Strivebenifits\Messagehub\Models\NotificationMessageHub;
 use App\Models\Roles;
 use App\Http\Repositories\NewAppUserRepository;
 use App\Http\Repositories\NotificationSettingUserMappingRepository;
+use App\Http\Repositories\AutomatedNotificationSettingRepository;
 
 class MessagehubManager
 {
@@ -683,6 +684,9 @@ class MessagehubManager
                 if(isset($notifications->is_gamification_reminder) && $notifications->is_gamification_reminder == 1){
                     //get all avtive employers who have entry for Gamification
                     $this->processGamificationReminderPushNotifications();
+                }elseif(isset($notifications->is_automated_notification) && $notifications->is_automated_notification == 1){
+                    //get all active employers who have Automated Notifications
+                    $this->processAutomatedNotifications($notifications->automated_type);
                 }else{
                 extract($this->messagehubRepository->getBrokerAndEmployerById($notifications->employers[0]));
                 extract($this->processNotifications($notifications->employers, $brokerId));
@@ -768,7 +772,37 @@ class MessagehubManager
         }
     }
 
-    /*
+    /**
+     * Process Automated Notifications at employer level
+     * @param $automatedNotifictionType
+     * @return
+     */
+    public function processAutomatedNotifications($automatedNotifictionType)
+    {
+        //Get Employer for whom automated notification type enable
+        $automatedNotificationSettingRepository = app()->make(AutomatedNotificationSettingRepository::class);
+        $employersQuery = $automatedNotificationSettingRepository->getAutomatedNotificationEnabledEmployer();
+
+        switch ($automatedNotifictionType) {
+            case 'birthday_wishes':
+                $employersData = $employersQuery->where('automated_notification_settings.birthday_wishes', 1)->get();
+                break;
+            case 'work_anniversary_wishes':
+                $employersData = $employersQuery->where('automated_notification_settings.work_anniversary_wishes', 1)->get();
+                break;
+            default:
+                $employersData = $employersQuery->get();
+                break;
+        }
+
+        if($employersData->isNotEmpty()){
+            foreach($employersData as $employer){
+                extract($this->processNotifications([$employer->employer_id], $employer->referer_id));
+            }
+        }
+    }
+
+    /**
      * Get All Scheduled Notifications
      * @param $role
      * @return collection data
