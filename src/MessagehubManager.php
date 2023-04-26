@@ -1084,6 +1084,7 @@ class MessagehubManager
         $mappedId = MessageMapping::insertGetId($mappingDetails);
         $notificationMessage = $notificationMessageHub->where(['notifications_message_hub.id' => $messageId]);
         $notificationMessage->update(['mapped_id' => $mappedId]);
+        $notificationData['mappedId'] = $mappedId;
         $this->setNotificationData($notificationData);
 
         $apps = $this->getAppList();

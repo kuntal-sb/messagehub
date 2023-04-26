@@ -174,6 +174,10 @@ class MessagehubRepository extends BaseRepository
         if(!empty($data['thumbnail_path'])){
             $this->setThumbnailPath($data['thumbnail_path']);
         }
+
+        $this->notificationData['mappedId'] = !empty($data['mappedId']) && !empty($data['created_from']) && $data['created_from'] == config('messagehub.post_type.global_raffle')? $data['mappedId']: null;
+
+
     }
 
     public function setPushInfo($brokerId){
@@ -507,9 +511,8 @@ class MessagehubRepository extends BaseRepository
             }else{
                 //$messageId = $this->addNotification($employerId, true, $employeeArr);
 
-                if(!$striveUserLevel) {
-                    $messageId = $this->addNotification($employerId, true, $employeeArr);
-                }
+                $messageId = $this->addNotification($employerId, true, $employeeArr, $striveUserLevel);
+
                 if($striveUserLevel && !empty($this->notificationData['message_id'])) {
                     $messageId = $this->notificationData['message_id'];
                 }
@@ -798,19 +801,25 @@ class MessagehubRepository extends BaseRepository
      * @param employerId
      * @return MessageId
      */
-    public function addNotification($employerId, $mapping = false, $employeeArr = [])
+    public function addNotification($employerId, $mapping = false, $employeeArr = [], $striveUserLevel = false)
     {
         if(!isset($this->notificationIds[$this->notificationType]['messageId'][$employerId])){
-            $notificationMessageId = $this->model->insertNotificationData($this->notificationType, $this->transactionId, $this->notificationData, $this->thumbnailPath);
+            if(!$striveUserLevel) {
+                $notificationMessageId = $this->model->insertNotificationData($this->notificationType, $this->transactionId, $this->notificationData, $this->thumbnailPath);
 
-            if (isset($this->notificationData['tags']) && !empty($this->notificationData['tags'])) {
-                $this->insertNotificationMessageHubTagsMappingData($notificationMessageId, $this->notificationData['tags']);
+                if (isset($this->notificationData['tags']) && !empty($this->notificationData['tags'])) {
+                    $this->insertNotificationMessageHubTagsMappingData($notificationMessageId, $this->notificationData['tags']);
+                }
+            } else {
+                if($striveUserLevel && !empty($this->notificationData['message_id'])) {
+                    $notificationMessageId = $this->notificationData['message_id'];
+                }
             }
             $this->notificationIds[$this->notificationType]['messageId'][$employerId] = $notificationMessageId;
 
             if($mapping){
                 $employeeId  = !empty($this->notificationData['created_by'])?$this->notificationData['created_by']:auth()->user()->id;
-                $this->addMessageMappingData($notificationMessageId, $employerId, $employeeId, $employeeArr);
+                $this->addMessageMappingData($notificationMessageId, $employerId, $employeeId, $employeeArr, $striveUserLevel);
             }
         }
 
@@ -841,11 +850,15 @@ class MessagehubRepository extends BaseRepository
      * @param $notificationMessageId
      * @return MessageId
      */
-    public function addMessageMappingData($notificationMessageId, $employerId, $employeeId = Null, $employeeArr = [])
+    public function addMessageMappingData($notificationMessageId, $employerId, $employeeId = Null, $employeeArr = [], $striveUserLevel = false)
     {
         try {
-            $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
-            $mappedId = MessageMapping::insertGetId($mappingDetails);
+            if(!$striveUserLevel) {
+                $mappingDetails = ['new_message_id' => $notificationMessageId,'created_at' => Carbon::now()];
+                $mappedId = MessageMapping::insertGetId($mappingDetails);
+            } else {
+                $mappedId = $this->notificationData['mappedId'];
+            }
             if(!empty($employeeArr)){
                 $elasticManager = app()->make(ElasticManager::class);
                 $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData);
@@ -880,84 +893,83 @@ class MessagehubRepository extends BaseRepository
                     $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData, $employerId, $notification_type);
                 }
             }
-            
-            $notificationMessage = $this->model::where(['notifications_message_hub.id' => $notificationMessageId]);
-            $notificationMessage->update(['mapped_id' => $mappedId]);
-            //Extract rewards and save them
-            Log::info("Extract user reward ". $mappedId);
-            $usersRewardPoint = extractUserReward($this->notificationData['message']);
-            if(!empty($usersRewardPoint)){
-                ProcessGamificationRecognitionPointAllocation::dispatch($usersRewardPoint, $employeeId, $employerId, $mappedId, $this->notificationData);
-            }
 
-            //Manage Post Recignition
-            if(isset($this->notificationData['reward_receivers']) && !empty($this->notificationData['reward_receivers'])){
-                ProcessGamificationRecognitionPointAllocation::dispatch($this->notificationData['reward_receivers'], $employeeId, $employerId, $mappedId, $this->notificationData);
-            }
+            if(!$striveUserLevel) {
+                $notificationMessage = $this->model::where(['notifications_message_hub.id' => $notificationMessageId]);
+                $notificationMessage->update(['mapped_id' => $mappedId]);
+                //Extract rewards and save them
+                Log::info("Extract user reward ". $mappedId);
+                $usersRewardPoint = extractUserReward($this->notificationData['message']);
+                if(!empty($usersRewardPoint)){
+                    ProcessGamificationRecognitionPointAllocation::dispatch($usersRewardPoint, $employeeId, $employerId, $mappedId, $this->notificationData);
+                }
 
-            //Save related data for Birthday wishes & Workaniversery
-            if(!empty($this->notificationData['created_from']) && ($this->notificationData['created_from'] == 'birthday_wishes' || $this->notificationData['created_from'] == 'work_anniversary_wishes')){
+                //Manage Post Recignition
+                if(isset($this->notificationData['reward_receivers']) && !empty($this->notificationData['reward_receivers'])){
+                    ProcessGamificationRecognitionPointAllocation::dispatch($this->notificationData['reward_receivers'], $employeeId, $employerId, $mappedId, $this->notificationData);
+                }
 
-                if(!empty($this->notificationData['automated_employees'])){
-                    $automatedEmployeesData = [];
-                    $created_at = Date('Y-m-d H:i:s');
-                    foreach($this->notificationData['automated_employees'] as $automatedEmployee){
+                //Save related data for Birthday wishes & Workaniversery
+                if(!empty($this->notificationData['created_from']) && ($this->notificationData['created_from'] == 'birthday_wishes' || $this->notificationData['created_from'] == 'work_anniversary_wishes')){
 
-                        $yearCompleted = null;
-                        if($this->notificationData['created_from'] == 'work_anniversary_wishes'){
-                            $yearCompleted = Date('Y') -  Carbon::createFromFormat('Y-m-d', $automatedEmployee['hire_date'])->format('Y');
+                    if(!empty($this->notificationData['automated_employees'])){
+                        $automatedEmployeesData = [];
+                        $created_at = Date('Y-m-d H:i:s');
+                        foreach($this->notificationData['automated_employees'] as $automatedEmployee){
+
+                            $yearCompleted = null;
+                            if($this->notificationData['created_from'] == 'work_anniversary_wishes'){
+                                $yearCompleted = Date('Y') -  Carbon::createFromFormat('Y-m-d', $automatedEmployee['hire_date'])->format('Y');
+                            }
+
+                            $automatedEmployeesData[] = ['message_id' => $notificationMessageId, 'user_id' => $automatedEmployee['id'], 'year_completed' => $yearCompleted, 'created_at' => $created_at];
                         }
 
-                        $automatedEmployeesData[] = ['message_id' => $notificationMessageId, 'user_id' => $automatedEmployee['id'], 'year_completed' => $yearCompleted, 'created_at' => $created_at];
+                        $automatedNotificationDataRepository = app()->make(AutomatedNotificationDataRepository::class);
+                        $automatedNotificationDataRepository->insert($automatedEmployeesData);
                     }
+                }
 
-                    $automatedNotificationDataRepository = app()->make(AutomatedNotificationDataRepository::class);
-                    $automatedNotificationDataRepository->insert($automatedEmployeesData);
+                //Extract tagged user and save them
+                $userTagArr = array_unique(extractUserTag($this->notificationData['message']));
+
+                if(!empty($userTagArr)){
+                    $employeeListTagAll = [];
+                    if(in_array(Config::get('constants.MESSAGE_TAG_ALL_USER'), $userTagArr)){
+                        $type = 'in-app';
+                        $employeeListTagAll = $this->getEmployeeList($type, $employerId,[],[],'',[],$this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
+                    }
+                    
+                    $pushMessage['title'] = $this->notificationData['title'];
+                    $pushMessage['userId'] = $employeeId;
+                    $pushMessage['message'] = $this->notificationData['message'];
+                    if($this->notificationData['created_from'] == 'user_post') {
+                        $notificationMessageData = $notificationMessage->addSelect('notifications_message_hub.title','notifications_message_hub.message','notifications_message_hub.created_from',DB::raw('messagehub_template_subcategories.title as sub_cat_title'))->leftJoin('messagehub_template_subcategories','messagehub_template_subcategories.id','notifications_message_hub.template_subcategory_id')->first();
+                        $pushMessage['title'] = $notificationMessageData->sub_cat_title;
+                    }
+                    $userRepository = app()->make(UsersRepository::class);
+                    $userData = $userRepository->first(['id' => $employeeId], ['id','broker_id','referer_id']);
+                    $brokerId = getBrokerFromEmployee($userData);
+                    $this->mappedUserTagRepository->manageCommentUsertag($userTagArr, $mappedId, $notificationMessageId, $employeeListTagAll, $employerId, $brokerId, $pushMessage, $this->notificationData['created_from']);
+                }
+
+                //Extract hash tag and  save them
+                $hashTagArr = extractHashTag($this->notificationData['message']);
+                if(!empty($hashTagArr)){
+                    $this->mappedHashtagRepository->manageCommentHashtag($hashTagArr, $mappedId);
+                }
+
+                //Extract message tag and save them
+                $messageTagArr = extractUserMessageTag($this->notificationData['message']);
+                if(!empty($messageTagArr)){
+                    $messageMappedTagRepository = app()->make(MessageMappedTagRepository::class);
+                    $messageMappedTagRepository->manageCommentTag($messageTagArr, $mappedId);
                 }
             }
-
-            //Extract tagged user and save them
-            $userTagArr = array_unique(extractUserTag($this->notificationData['message']));
-
-            if(!empty($userTagArr)){
-                $employeeListTagAll = [];
-                if(in_array(Config::get('constants.MESSAGE_TAG_ALL_USER'), $userTagArr)){
-                    $type = 'in-app';
-                    $employeeListTagAll = $this->getEmployeeList($type, $employerId,[],[],'',[],$this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
-                }
-                
-                $pushMessage['title'] = $this->notificationData['title'];
-                $pushMessage['userId'] = $employeeId;
-                $pushMessage['message'] = $this->notificationData['message'];
-                if($this->notificationData['created_from'] == 'user_post') {
-                    $notificationMessageData = $notificationMessage->addSelect('notifications_message_hub.title','notifications_message_hub.message','notifications_message_hub.created_from',DB::raw('messagehub_template_subcategories.title as sub_cat_title'))->leftJoin('messagehub_template_subcategories','messagehub_template_subcategories.id','notifications_message_hub.template_subcategory_id')->first();
-                    $pushMessage['title'] = $notificationMessageData->sub_cat_title;
-                }
-                $userRepository = app()->make(UsersRepository::class);
-                $userData = $userRepository->first(['id' => $employeeId], ['id','broker_id','referer_id']);
-                $brokerId = getBrokerFromEmployee($userData);
-                $this->mappedUserTagRepository->manageCommentUsertag($userTagArr, $mappedId, $notificationMessageId, $employeeListTagAll, $employerId, $brokerId, $pushMessage, $this->notificationData['created_from']);
-            }
-
-            //Extract hash tag and  save them
-            $hashTagArr = extractHashTag($this->notificationData['message']);
-            if(!empty($hashTagArr)){
-                $this->mappedHashtagRepository->manageCommentHashtag($hashTagArr, $mappedId);
-            }
-
-            //Extract message tag and save them
-            $messageTagArr = extractUserMessageTag($this->notificationData['message']);
-            if(!empty($messageTagArr)){
-                $messageMappedTagRepository = app()->make(MessageMappedTagRepository::class);
-                $messageMappedTagRepository->manageCommentTag($messageTagArr, $mappedId);
-            }
-
-
         } catch (Exception $e) {
             Log::error("Message Mapping Log: ".$e);
         }
     }
-
 
     public function getEmployeeBySentType($employerId = '')
     {
