@@ -412,12 +412,15 @@ class MessagehubManager
                 }
                 $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id, $messageStatus);
                 if(!$isNewAppUser){
-                $unreadCount = $unreadCount + 1;
+                    $unreadCount = $unreadCount + 1;
                 }
             }
+
             $globalSettingsRepository = app()->make(GlobalSettingsRepository::class);
-            $globalSettingData = $globalSettingsRepository->first(['field' => 'USER_GENERATED_POST']);
-            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && in_array($data['created_from'], ['user_post','recognition_user_post','customised_challenge_post']) && $globalSettingData->value == "0")){
+            $globalSettingData = $globalSettingsRepository->baseQuery([],['id','field','value'])->whereIn('field',['USER_GENERATED_POST', 'CUSTOMISED_CHALLENGE_NOTIFICATION'])->pluck('value','field')->toArray();
+
+            // To Avoid push notification in some cases
+            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && in_array($data['created_from'], ['user_post','recognition_user_post','customised_challenge_post']) && $globalSettingData['USER_GENERATED_POST'] == "0")  && !(isset($data['created_from']) && in_array($data['created_from'], ['customised_challenge_notification'])  && $globalSettingData['CUSTOMISED_CHALLENGE_NOTIFICATION'] == "0")){
                 if(isset($data['created_from']) && in_array($data['created_from'], ['user_post'])){
                     $messagehubData = $this->messagehubRepository->getNotificationsWithSubCategory($message_id);
                     $data['title'] = $messagehubData->sub_cat_title;
@@ -437,7 +440,6 @@ class MessagehubManager
     public function sendNotification($data, $logID, $message_id, $unreadCount)
     {
         try {
-
             $comment_type = isset($data['comment_type']) ? $data['comment_type'] : '';
             $pushMessage = htmlspecialchars(trim(processPushNotificationText($data['message'])));
 
@@ -465,35 +467,34 @@ class MessagehubManager
             }
             
             if(!(isset($data['is_gamification_reminder']) && $data['is_gamification_reminder'] == 1)){
-            $update_log_data = array(
-                    'is_success' => $is_success,
-                    'status' => $is_success==1?'sent':'failed',
-                    'exception_message' => $exception_message,
-                    'updated_at'=>Carbon::now()
+                $update_log_data = array(
+                        'is_success' => $is_success,
+                        'status' => $is_success==1?'sent':'failed',
+                        'exception_message' => $exception_message,
+                        'updated_at'=>Carbon::now()
                     );
 
-            Log::error('--exception_message--'.$exception_message);
+                //Log::error('--exception_message--'.$exception_message);
 
-            if(!(isset($data['isCommentOrReply']) && $data['isCommentOrReply'])){
-                $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
-            }
+                if(!(isset($data['isCommentOrReply']) && $data['isCommentOrReply'])){
+                    $this->messagehubRepository->updateNotificationLog($logID, $update_log_data);
+                }
 
-            $elasticData = [
-                    "userId" => $data['employee_id'],
-                    "screenName" => "MessageHub",
-                    "eventName" => "Delivered",
-                    "eventType" => "Notification",
-                    "resend" => isset($data['is_resend'])?isset($data['is_resend']):false,
-                    "notificationId" => $logID
-                ];
-            if($is_success == 1){
-                $elasticData['eventName'] = "Delivered";
-            }else{
-                $elasticData['eventName'] = "Failed";
+                $elasticData = [
+                        "userId" => $data['employee_id'],
+                        "screenName" => "MessageHub",
+                        "eventName" => "Delivered",
+                        "eventType" => "Notification",
+                        "resend" => isset($data['is_resend'])?isset($data['is_resend']):false,
+                        "notificationId" => $logID
+                    ];
+                if($is_success == 1){
+                    $elasticData['eventName'] = "Delivered";
+                }else{
+                    $elasticData['eventName'] = "Failed";
+                }
+                SendLogToElastic::dispatch($elasticData)->onQueue('elastic_queue');
             }
-            SendLogToElastic::dispatch($elasticData)->onQueue('elastic_queue');
-            }
-
         }catch(Exception $e){
             Log::error($e);
         }
