@@ -203,7 +203,7 @@ class MessagehubRepository extends BaseRepository
      * @param 
      * @return  array employers
      */
-    public function getEmployersFilter($role, $uid=null)
+    /*public function getEmployersFilter($role, $uid=null)
     {
         $employers = [];
         $userid = ($uid)?$uid:Auth::user()->id;
@@ -228,6 +228,35 @@ class MessagehubRepository extends BaseRepository
                 //get refererId of logged in user
                 $brokerId = User::where('id',$userid)->select('referer_id')->first()->referer_id;
                 $employers = array_column($this->getEmployerList($brokerId), 'id');
+                break;
+            default:
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }
+                break;
+        }
+        return $employers;
+    }*/
+
+    public function getEmployersFilter($role, $uid=null)
+    {
+        $employers = [];
+        $userid = ($uid)?$uid:Auth::user()->id;
+        switch ($role) {
+            case config('role.EMPLOYER'):
+                $employers = [$userid];
+                break;
+            case config('role.BROKER'):
+            case config('role.BROKEREMPLOYEE'):
+                if(loggedinAsEmployer()){
+                    $employers = [getEmployerId()];
+                }else{
+                    $employers = array_column($this->getEmployerList($userid), 'id');
+                }
+                break;
+            case config('role.HR_ADMIN'):
+            case config('role.HR'):
+                $employers = [User::where('id',$userid)->select('referer_id')->first()->referer_id];
                 break;
             default:
                 if(loggedinAsEmployer()){
