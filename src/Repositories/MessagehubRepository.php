@@ -296,8 +296,7 @@ class MessagehubRepository extends BaseRepository
                     });
         });
 
-        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.created_from','notifications_message_hub.created_as'])->orderBy('created_at', 'desc');
-        return $notifications;
+        return $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.created_from','notifications_message_hub.created_as'])->orderBy('created_at', 'desc');
     }
 
     /**
@@ -311,8 +310,7 @@ class MessagehubRepository extends BaseRepository
 
         $notifications = $notifications->whereIn('notifications_message_hub.id', $messageIds);
 
-        $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.expiry_date','notifications_message_hub.created_from','notifications_message_hub.created_as'])->orderBy('created_at', 'desc');
-        return $notifications;
+        return $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.expiry_date','notifications_message_hub.created_from','notifications_message_hub.created_as'])->orderBy('created_at', 'desc');
     }
 
     /**
@@ -378,8 +376,7 @@ class MessagehubRepository extends BaseRepository
             $notifications->where('x.message','like', '%'.$searchMessage.'%');
         }
 
-        $notifications->join('users','employee_id','=','users.id')->addSelect('users.email');
-        return $notifications;
+        return $notifications->join('users','employee_id','=','users.id')->addSelect('users.email');
     }
 
 
@@ -888,6 +885,10 @@ class MessagehubRepository extends BaseRepository
             } else {
                 $mappedId = $this->notificationData['mappedId'];
             }
+
+            //Extract tagged users in message
+            $userTagArr = array_unique(extractUserTag($this->notificationData['message']));
+
             if(!empty($employeeArr)){
                 $elasticManager = app()->make(ElasticManager::class);
                 $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData);
@@ -898,16 +899,25 @@ class MessagehubRepository extends BaseRepository
                 //If challenge is created with send_as_community_post checked then prevent its elk notification store to hide multiple bell notifications
                 if($this->notificationData['created_from'] != 'customised_challenge_notification' && ($this->notificationType == config('messagehub.notification.type.INAPP') || $this->notificationType == config('messagehub.notification.type.INAPPTEXT'))) {
 
-                    //Remove Employee Id who have created post
+                    //Ticket: https://strive.atlassian.net/browse/BP-2854 POINT 2
+                    //Remove Employee Id who have created post and who are tagged in post
                     foreach($employeeArr as $mainKey=>$valueEmployeeArr){
                         if(!is_array($valueEmployeeArr)) {
                     if (($key = array_search($this->notificationData['created_by'], $employeeArr)) !== false) {
                         unset($employeeArr[$key]);
                             }
+                            if(!empty($userTagArr)){
+                                $employeeArr = array_diff_key($employeeArr, array_flip($userTagArr));
+                            }
                             break;
                         }else{
                             if (($key = array_search($this->notificationData['created_by'], $valueEmployeeArr)) !== false) {
                                 unset($valueEmployeeArr[$key]);
+                                unset($employeeArr[$mainKey]);
+                                $employeeArr[$mainKey] = array_values($valueEmployeeArr);
+                            }
+                            if(!empty($userTagArr)){
+                                $valueEmployeeArr = array_diff_key($valueEmployeeArr, array_flip($userTagArr));
                                 unset($employeeArr[$mainKey]);
                                 $employeeArr[$mainKey] = array_values($valueEmployeeArr);
                             }
@@ -958,9 +968,6 @@ class MessagehubRepository extends BaseRepository
                         $automatedNotificationDataRepository->insert($automatedEmployeesData);
                     }
                 }
-
-                //Extract tagged user and save them
-                $userTagArr = array_unique(extractUserTag($this->notificationData['message']));
 
                 if(!empty($userTagArr)){
                     $employeeListTagAll = [];
@@ -1355,15 +1362,14 @@ class MessagehubRepository extends BaseRepository
 
         if( $timestamp != 0)
         {
-            $query = $query->where('notifications_message_hub_push_log.updated_at','>=',$timestamp);
+            $query->where('notifications_message_hub_push_log.updated_at','>=',$timestamp);
         }
             
-        $query = $query->whereDate('notifications_message_hub.valid_from', '<=', Carbon::now()->format('Y-m-d'))
+        return $query->whereDate('notifications_message_hub.valid_from', '<=', Carbon::now()->format('Y-m-d'))
             ->where(function($q) {
                 $q->WhereDate('notifications_message_hub.expiry_date', '>=', Carbon::now()->format('Y-m-d'));
                 $q->orwhereDate('notifications_message_hub.expiry_date','=', '0000-00-00');
             });
-        return $query;
     }
 
     public function unreadOldNotificationMessages($user_id, $timestamp) 
@@ -1380,15 +1386,14 @@ class MessagehubRepository extends BaseRepository
 
         if( $timestamp != 0) // for timestamp 0
         {
-            $query = $query->where('push_notification_logs.updated_at','>=',$timestamp);
+            $query->where('push_notification_logs.updated_at','>=',$timestamp);
         }
 
-        $query = $query->whereDate('notification_messages.valid_from', '<=', Carbon::now()->format('Y-m-d'))
+        return $query->whereDate('notification_messages.valid_from', '<=', Carbon::now()->format('Y-m-d'))
             ->where(function($q) {
                 $q->WhereDate('notification_messages.expiry_date', '>=', Carbon::now()->format('Y-m-d'));
                 $q->orWhereDate('notification_messages.expiry_date','=', '0000-00-00 00:00:00');
             });
-        return $query;
     }
 
     public function insertNotificationLog($data, $messageId, $messageStatus = '')
@@ -1883,25 +1888,21 @@ class MessagehubRepository extends BaseRepository
             $brokers = [$brokers];
         }
         foreach($brokers as $brokerId){
+            $query = '';
+            $query = User::join('employerdetails', 'users.id', '=', 'employerdetails.user_id');
             if(Session::get('role') === config('role.BROKEREMPLOYEE')){ 
-            $query = User::join('employerdetails', 'users.id', '=', 'employerdetails.user_id')
-                    ->join('broker_employee_cms_mapping', 'users.id','=','broker_employee_cms_mapping.employer_id') 
-                    ->where('broker_employee_id','=',Auth::user()->id)  
-                ->where('users.referer_id', $brokerId)
-                ->enabled()
-                ->active()
-                ->select('users.id','users.company_name','users.email','users.first_name','users.last_name','users.last_login');
-            }else{  
-                $query = User::join('employerdetails', 'users.id', '=', 'employerdetails.user_id')  
-                    ->where('users.referer_id', $brokerId)  
-                    ->enabled() 
-                    ->active()  
-                    ->select('users.id','users.company_name','users.email','users.first_name','users.last_name','users.last_login');    
+                $query->join('broker_employee_cms_mapping', 'users.id','=','broker_employee_cms_mapping.employer_id') 
+                    ->where('broker_employee_id','=',Auth::user()->id);
             }
+
+            $query->where('users.referer_id', $brokerId)
+                    ->enabled()
+                    ->active()
+                    ->select('users.id','users.company_name','users.email','users.first_name','users.last_name','users.last_login');
 
             //Exclude blocekd employees
             if($excludeBlockedEmployer){
-                $query = $query->leftJoin('notification_blocked_employer', function($join)
+                $query->leftJoin('notification_blocked_employer', function($join)
                     {
                         $join->on('users.id', '=', 'notification_blocked_employer.user_id')
                             ->whereNull('notification_blocked_employer.deleted_at');
@@ -1911,7 +1912,7 @@ class MessagehubRepository extends BaseRepository
 
             //Include only those employer whose Gamification or Recognition is enabled
             if($onlyGamificationEmployer){
-                $query = $query->join('gamification_employer_settings','users.id','=','gamification_employer_settings.employer_id')->where(function($query) {
+                $query->join('gamification_employer_settings','users.id','=','gamification_employer_settings.employer_id')->where(function($query) {
                     return $query
                     ->where('gamification_employer_settings.allow_gamification', 1)
                     ->orWhere('gamification_employer_settings.allow_recognition', 1);
@@ -2205,7 +2206,6 @@ class MessagehubRepository extends BaseRepository
             ->leftJoin('messagehub_template_subcategories','messagehub_template_subcategories.id','notifications_message_hub.template_subcategory_id')
             ->where('notifications_message_hub.id', $messageId)
             ->first();
-        
     }
 
     /**
@@ -2229,19 +2229,19 @@ class MessagehubRepository extends BaseRepository
         }
 
         if($status == "opened"){
-            $userActionDetails = $userActionDetails->where([['open_status', 1],['engaged_status', 0],['completed_status',0],['read_status',0]]);
+            $userActionDetails->where([['open_status', 1],['engaged_status', 0],['completed_status',0],['read_status',0]]);
         }
         if($status == "engaged"){
-            $userActionDetails = $userActionDetails->where([['engaged_status',1],['completed_status',0]]);
+            $userActionDetails->where([['engaged_status',1],['completed_status',0]]);
         }
         if($status == "completed"){
-            $userActionDetails = $userActionDetails->where('completed_status',1);
+            $userActionDetails->where('completed_status',1);
         }
         if($status == "read"){
-            $userActionDetails = $userActionDetails->where([['read_status',1],['engaged_status',0],['completed_status',0]]);
+            $userActionDetails->where([['read_status',1],['engaged_status',0],['completed_status',0]]);
         }
         if($status == "engagedCompleted"){
-            $userActionDetails = $userActionDetails->where([['engaged_status',1],['completed_status',1]]);
+            $userActionDetails->where([['engaged_status',1],['completed_status',1]]);
         }
         return $userActionDetails->get();
     }
