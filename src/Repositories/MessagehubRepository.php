@@ -906,7 +906,7 @@ class MessagehubRepository extends BaseRepository
                     if (($key = array_search($this->notificationData['created_by'], $employeeArr)) !== false) {
                         unset($employeeArr[$key]);
                             }
-                            if(!empty($userTagArr)){
+                            if(!empty($userTagArr) && in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post'])){
                                 $employeeArr = array_diff_key($employeeArr, array_flip($userTagArr));
                             }
                             break;
@@ -916,7 +916,7 @@ class MessagehubRepository extends BaseRepository
                                 unset($employeeArr[$mainKey]);
                                 $employeeArr[$mainKey] = array_values($valueEmployeeArr);
                             }
-                            if(!empty($userTagArr)){
+                            if(!empty($userTagArr) && in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post'])){
                                 $valueEmployeeArr = array_diff_key($valueEmployeeArr, array_flip($userTagArr));
                                 unset($employeeArr[$mainKey]);
                                 $employeeArr[$mainKey] = array_values($valueEmployeeArr);
@@ -969,6 +969,7 @@ class MessagehubRepository extends BaseRepository
                     }
                 }
 
+                //Saved tagged users
                 if(!empty($userTagArr)){
                     $employeeListTagAll = [];
                     if(in_array(Config::get('constants.MESSAGE_TAG_ALL_USER'), $userTagArr)){
@@ -1006,7 +1007,6 @@ class MessagehubRepository extends BaseRepository
             Log::error("Message Mapping Log: ".$e);
         }
     }
-
     public function getEmployeeBySentType($employerId = '')
     {
         if($this->notificationData['send_to'] == 'send_to_all'){
