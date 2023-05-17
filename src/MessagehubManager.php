@@ -278,7 +278,7 @@ class MessagehubManager
                         $this->messagehubRepository->setResendData($notificationDetail);
                         if($request->type != 'email'){
                             $pushNotificationData = $this->messagehubRepository->dispatchPushNotification($notificationDetail->employee_id, $notificationDetail->employer_id);
-                            if(!empty($pushNotificationData)){
+                            if(!empty($pushNotificationData) && $pushNotificationData['status'] != 400){
                                 $pushBatchList[] = new sendNotifications($pushNotificationData);
                             }
                         }

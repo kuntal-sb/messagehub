@@ -496,7 +496,7 @@ class MessagehubRepository extends BaseRepository
      *  @param
      *  @return
      */    
-    public function dispatchPushNotification($employee, $employerId, $employeeArr = [])
+    public function dispatchPushNotification($employee, $employerId, $employeeArr = [], $employeeDataToElk = false)
     {
         try {
             $deviceToken = $deviceType = $is_flutter = '';
@@ -537,7 +537,7 @@ class MessagehubRepository extends BaseRepository
             }else{
                 //$messageId = $this->addNotification($employerId, true, $employeeArr);
 
-                $messageId = $this->addNotification($employerId, true, $employeeArr, $striveUserLevel);
+                $messageId = $this->addNotification($employerId, true, $employeeArr, $striveUserLevel, $employeeDataToElk);
 
                 if($striveUserLevel && !empty($this->notificationData['message_id'])) {
                     $messageId = $this->notificationData['message_id'];
@@ -600,6 +600,8 @@ class MessagehubRepository extends BaseRepository
                 $pushMessageId = '';
             }
             $pushNotificationData = array();
+            $pushNotificationData['message_id'] = (string) $messageId;
+            $pushNotificationData['status'] = 400;
 
             //This condition will handle sending multiple push if different users logged in same device.
             if(!in_array($deviceToken, $this->duplicateDevices) && $deviceToken != ''){
@@ -624,7 +626,8 @@ class MessagehubRepository extends BaseRepository
                     'target_screen' => $this->notificationData['target_screen'],
                     'target_screen_param' => $this->notificationData['target_screen_param'],
                     'is_resend' => $this->isResend,
-                    'is_gamification_reminder' => $is_gamification_reminder
+                    'is_gamification_reminder' => $is_gamification_reminder,
+                    'status' => 200,
                 );
 
                 $seconds=0+($this->increment*2);
@@ -827,7 +830,7 @@ class MessagehubRepository extends BaseRepository
      * @param employerId
      * @return MessageId
      */
-    public function addNotification($employerId, $mapping = false, $employeeArr = [], $striveUserLevel = false)
+    public function addNotification($employerId, $mapping = false, $employeeArr = [], $striveUserLevel = false, $employeeDataToElk = false)
     {
         if(!isset($this->notificationIds[$this->notificationType]['messageId'][$employerId])){
             if(!$striveUserLevel) {
@@ -845,7 +848,7 @@ class MessagehubRepository extends BaseRepository
 
             if($mapping){
                 $employeeId  = !empty($this->notificationData['created_by'])?$this->notificationData['created_by']:auth()->user()->id;
-                $this->addMessageMappingData($notificationMessageId, $employerId, $employeeId, $employeeArr, $striveUserLevel);
+                $this->addMessageMappingData($notificationMessageId, $employerId, $employeeId, $employeeArr, $striveUserLevel, $employeeDataToElk);
             }
         }
 
@@ -876,7 +879,7 @@ class MessagehubRepository extends BaseRepository
      * @param $notificationMessageId
      * @return MessageId
      */
-    public function addMessageMappingData($notificationMessageId, $employerId, $employeeId = Null, $employeeArr = [], $striveUserLevel = false)
+    public function addMessageMappingData($notificationMessageId, $employerId, $employeeId = Null, $employeeArr = [], $striveUserLevel = false, $employeeDataToElk = false)
     {
         try {
             if(!$striveUserLevel) {
@@ -929,7 +932,11 @@ class MessagehubRepository extends BaseRepository
                         $notification_type = config('notification.NOTIFICATION_ELK_TYPE.GENERAL');
                     }
 
-                    $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData, $employerId, $notification_type);
+                    if($employeeDataToElk){
+                        $elasticManager->postNotificationToElk([], $notificationMessageId, $mappedId, $this->notificationData, $employerId, $notification_type);
+                    }else{
+                        $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData, $employerId, $notification_type);
+                    }
                 }
             }
 
