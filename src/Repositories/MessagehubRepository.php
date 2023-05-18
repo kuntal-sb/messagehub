@@ -1755,6 +1755,10 @@ class MessagehubRepository extends BaseRepository
                             });
                     });
                 }
+                $query->join('app_instances', 'app_instance_assigned.app_instance_id', '=', 'app_instances.id');
+            } else {
+                $query->leftJoin('app_instance_assigned','app_instance_assigned.user_id','=','users.id')
+                ->join('app_instances', 'app_instance_assigned.app_instance_id', '=', 'app_instances.id');
             }
 
             //filter record based on email if provided
