@@ -1720,7 +1720,7 @@ class MessagehubRepository extends BaseRepository
                         ->where('users.referer_id','=',$employer)
                         ->enabled()
                         ->active()
-                        ->select('users.id','users.username','users.first_name','users.last_name','users.email','users.created_at','users.last_login', 'users.timezone');
+                        ->select('users.id','users.username','users.first_name','users.last_name','users.email','users.created_at','users.last_login', 'users.timezone', 'app_instances.name AS app_instance_name');
 
             if(!$includeDemoAccounts){
                 $query->where('employeedetails.is_demo_account', 0);
