@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Facades\DB;
+use App\Models\AutomatedNotificationData;
+use App\Models\UserLevelWinnerLogs;
 use Carbon\Carbon;
 
 class NotificationMessageHub extends Model
@@ -105,6 +107,42 @@ class NotificationMessageHub extends Model
                 'id',
                 'tag_id'
             );
+    }
+
+    /**
+     * @return HasMany
+     */
+    public function birthDayWishes() {
+
+        $key_string = config('general.field_secret_key');
+        return $this->hasMany(AutomatedNotificationData::class, 'message_id', 'id')
+            ->join('user_demographics', 'user_demographics.user_id','automated_notification_data.user_id')
+            ->join('users', 'user_demographics.user_id','users.id')
+            ->select('automated_notification_data.message_id', 'automated_notification_data.user_id AS employee_id',DB::raw('(AES_DECRYPT(FROM_BASE64(user_demographics.dob),"'.$key_string.'")) AS dob'), 'user_demographics.profile_image', 'users.first_name')
+            ->whereNull('automated_notification_data.year_completed')
+            ->whereNotNull('user_demographics.dob');
+    }
+
+    /**
+     * @return HasMany
+     */
+    public function workAnniversaryWishes() {
+        return $this->hasMany(AutomatedNotificationData::class, 'message_id', 'id')
+            ->join('user_demographics', 'user_demographics.user_id','automated_notification_data.user_id')
+            ->join('users', 'user_demographics.user_id','users.id')
+            ->selectRaw('automated_notification_data.message_id,automated_notification_data.user_id AS employee_id, automated_notification_data.year_completed, user_demographics.profile_image, users.first_name')
+            ->whereNotNull('automated_notification_data.year_completed')
+            ->orderBy('automated_notification_data.year_completed','DESC');
+    }
+
+    /**
+     * @return HasMany
+     */
+    public function globalRaffleWinners() {
+        return $this->hasMany(UserLevelWinnerLogs::class, 'message_id', 'id')
+            ->join('user_demographics', 'user_demographics.user_id','user_level_winner_logs.user_id')
+            ->join('users', 'user_demographics.user_id','users.id')
+            ->selectRaw('user_level_winner_logs.message_id,user_level_winner_logs.user_id,user_level_winner_logs.level,user_level_winner_logs.min_point_range,user_level_winner_logs.max_point_range,user_level_winner_logs.dollar_amount, user_demographics.profile_image, users.first_name');
     }
 
     /**
