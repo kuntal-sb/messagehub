@@ -932,9 +932,7 @@ class MessagehubRepository extends BaseRepository
                         $notification_type = config('notification.NOTIFICATION_ELK_TYPE.GENERAL');
                     }
 
-                    if($employeeDataToElk){
-                        $elasticManager->postNotificationToElk([], $notificationMessageId, $mappedId, $this->notificationData, $employerId, $notification_type);
-                    }else{
+                    if(!$employeeDataToElk){
                         $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData, $employerId, $notification_type);
                     }
                 }
