@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\DB;
 use App\Models\AutomatedNotificationData;
 use App\Models\UserLevelWinnerLogs;
 use App\Models\UserDemographic;
-use App\Models\UserLevelWinnerLogs;
 use Carbon\Carbon;
 
 class NotificationMessageHub extends Model
