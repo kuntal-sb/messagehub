@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Support\Facades\DB;
 use App\Models\AutomatedNotificationData;
 use App\Models\UserLevelWinnerLogs;
+use App\Models\UserDemographic;
 use Carbon\Carbon;
 
 class NotificationMessageHub extends Model
@@ -107,6 +108,14 @@ class NotificationMessageHub extends Model
                 'id',
                 'tag_id'
             );
+    }
+
+    /**
+     * @return BelongsTo
+     */
+    public function postUserProfile(): BelongsTo
+    {
+        return $this->belongsTo(UserDemographic::class, 'created_as', 'user_id');
     }
 
     /**

@@ -51,4 +51,12 @@ class NotificationMessageHubPushLog extends Model
     {
         return $this->belongsTo(\App\Models\NotificationMessageHub::class,'message_id','id');
     }
+
+    /*
+    * @return BelongsTo
+    */
+    public function employerdetails()
+    {
+        return $this->belongsTo(\App\Models\EmployerDetails::class, 'employer_id', 'user_id');
+    }
 }
