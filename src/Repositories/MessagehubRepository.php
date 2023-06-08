@@ -1970,17 +1970,53 @@ class MessagehubRepository extends BaseRepository
     {
         $employers = $this->getEmployersFilter($role, Auth::user()->id);
         $param = [];
-        if(!empty($employers)){
-            $param = [[
+        if (!empty($employers)) {
+            $param = [
+                [
                     '$match' => [
-                        'employers' =>[
+                        'employers' => [
                             '$in' => $employers
                         ]
                     ],
-                    
-                ],[ '$sort'=> ["scheduled_utc_time"=> -1] ]];
-        }else{
-            $param = [[ '$sort'=> ["scheduled_utc_time"=> -1] ]];
+
+                ], [
+                    '$addFields' => [
+                        "scheduledDateSort" => [
+                            '$cond' => [
+                                'if' => [
+                                    '$eq' => [
+                                        '$is_repeated',
+                                        "does_not_repeat"
+                                    ]
+                                ],
+                                'then' => '$scheduled_utc_time',
+                                'else' => '$next_scheduled_utc_time'
+                            ]
+                        ],
+                    ]
+                ],
+                ['$sort' => ["status" => -1, "scheduledDateSort" => 1]]
+            ];
+        } else {
+            $param = [
+                [
+                    '$addFields' => [
+                        "scheduledDateSort" => [
+                            '$cond' => [
+                                'if' => [
+                                    '$eq' => [
+                                        '$is_repeated',
+                                        "does_not_repeat"
+                                    ]
+                                ],
+                                'then' => '$scheduled_utc_time',
+                                'else' => '$next_scheduled_utc_time'
+                            ]
+                        ],
+                    ]
+                ],
+                ['$sort' => ["status" => -1, "scheduledDateSort" => 1]]
+            ];
         }
 
         return NotificationSchedule::raw(function($collection) use ($param)
