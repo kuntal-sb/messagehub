@@ -1102,7 +1102,7 @@ class MessagehubRepository extends BaseRepository
             $recipient -> setSingleRecipient($data['device_token']);
             // Setup Notificaition title and body
 
-            $dataMessage = Str::words(processPushNotificationText($data['message']), config('messagehub.payload_message_char_limit'),'....');
+            $dataMessage = Str::limit(processPushNotificationText($data['message']), config('messagehub.payload_message_char_limit'),'....');
             $notification -> setNotification($data['title'], $dataMessage);
 
             // Build FCM request payload
