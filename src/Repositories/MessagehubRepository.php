@@ -55,6 +55,7 @@ use App\Models\UserpostContentMapping;
 use App\Models\NotificationTags;
 use App\Models\Roles;
 use App\Models\MongoDb\NotificationsMessageHubPushLog as NotificationsMessageHubPushLogMongo;
+use \Illuminate\Support\Str;
 
 /**
  * Class MessagehubRepository
@@ -1100,7 +1101,10 @@ class MessagehubRepository extends BaseRepository
             // the name of topic, and conditional statement
             $recipient -> setSingleRecipient($data['device_token']);
             // Setup Notificaition title and body
-            $notification -> setNotification($data['title'], processPushNotificationText($data['message']));
+
+            $dataMessage = Str::words(processPushNotificationText($data['message']), config('messagehub.payload_message_char_limit'),'....');
+            $notification -> setNotification($data['title'], $dataMessage);
+
             // Build FCM request payload
             //if($data['device_type'] !== 'appNameIOS'){
                 $comment_id = isset($data['comment_id']) ? $data['comment_id'] : 0;
