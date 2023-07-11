@@ -954,22 +954,18 @@ class MessagehubRepository extends BaseRepository
                     ProcessGamificationRecognitionPointAllocation::dispatch($this->notificationData['reward_receivers'], $employeeId, $employerId, $mappedId, $this->notificationData);
                 }
 
-                //Save related data for Birthday wishes & Workaniversery
-                if(!empty($this->notificationData['created_from']) && ($this->notificationData['created_from'] == 'birthday_wishes' || $this->notificationData['created_from'] == 'work_anniversary_wishes')){
-
+                //Save related data for Birthday wishes, onbording & Workaniversery
+                if(!empty($this->notificationData['created_from']) && in_array($this->notificationData['created_from'], ['birthday_wishes','work_anniversary_wishes','onboarding'])){
                     if(!empty($this->notificationData['automated_employees'])){
                         $automatedEmployeesData = [];
                         $created_at = Date('Y-m-d H:i:s');
                         foreach($this->notificationData['automated_employees'] as $automatedEmployee){
-
                             $yearCompleted = null;
                             if($this->notificationData['created_from'] == 'work_anniversary_wishes'){
                                 $yearCompleted = Date('Y') -  Carbon::createFromFormat('Y-m-d', $automatedEmployee['hire_date'])->format('Y');
                             }
-
-                            $automatedEmployeesData[] = ['message_id' => $notificationMessageId, 'user_id' => $automatedEmployee['id'], 'year_completed' => $yearCompleted, 'created_at' => $created_at];
+                            $automatedEmployeesData[] = ['message_id' => $notificationMessageId, 'user_id' => $automatedEmployee['id'], 'year_completed' => $yearCompleted, 'type' => $this->notificationData['created_from'], 'created_at' => $created_at];
                         }
-
                         $automatedNotificationDataRepository = app()->make(AutomatedNotificationDataRepository::class);
                         $automatedNotificationDataRepository->insert($automatedEmployeesData);
                     }
@@ -1474,9 +1470,27 @@ class MessagehubRepository extends BaseRepository
     public function getPushNotificationLogCount($message_id, $striveUserNotification = false)
     {
         $query = DB::table('notifications_message_hub_push_log')
-        ->selectRaw(
+            ->join('notifications_message_hub','notifications_message_hub_push_log.message_id','=','notifications_message_hub.id')
+            ->selectRaw("COUNT(notifications_message_hub_push_log.id) AS `sent`, 
+SUM(case when notifications_message_hub_push_log.is_success = 1 then 1 else 0 END) AS `delivered`,  
+sum(case when `status` = 'app not downloaded' OR ( is_success = 0 AND exception_message = 'App not Downloaded' AND `status` != 'app not downloaded') then 1 else 0 END) AS `app_not_downloaded`,
+sum(case when `status` = 'failed' OR (is_success = 0 AND `status` not IN ('app not downloaded','failed') AND exception_message != 'App not Downloaded') then 1 else 0 END) AS `failed`,
+SUM(case when notifications_message_hub_push_log.is_success = 0 AND `status` not IN ('app not downloaded','failed') then 1 else 0 END) AS `later_downloaded`,
+SUM(notifications_message_hub_push_log.open_status) AS `view`, 
+SUM(case when (read_status = 1 AND engaged_status=1) then 1
+             when (read_status = 1 AND engaged_status=0) then 1
+             when (read_status = 0 AND engaged_status=1) then 1
+             ELSE 0
+        end) as `engaged`,
+  SUM(case when (notifications_message_hub.target_screen != '' OR notifications_message_hub.action_url != '' or created_from in ( 'explore_notifcation','customised_challenge_notification') ) then notifications_message_hub_push_log.completed_status ELSE  (case when (read_status = 1 AND engaged_status=1) then 1
+             when (read_status = 1 AND engaged_status=0) then 1
+             when (read_status = 0 AND engaged_status=1) then 1
+             ELSE 0
+        END) END ) AS `completed`");
+
+        /*->selectRaw(
             "sum(case when STATUS = 'sent' then 1 else 0 end) as sent, sum(case when STATUS = 'delivered' then 1 else 0 end) as delivered, sum(case when STATUS = 'opened' then 1 else 0 end) as open, sum(case when STATUS = 'engaged' then 1 else 0 end) as engaged, sum(case when STATUS = 'completed' then 1 else 0 end) as completed, sum(case when STATUS = 'App Not Downloaded' then 1 else 0 end) as app_not_downloaded, sum(case when STATUS = 'read' then 1 else 0 end) as `read`, sum(case when STATUS = 'failed' then 1 else 0 end) as failed"
-        );
+        );*/
 
         if ($striveUserNotification) {
             if (Session::get('role') == Roles::ROLE_BROKER) {
