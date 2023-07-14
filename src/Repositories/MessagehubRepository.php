@@ -1476,7 +1476,7 @@ SUM(case when notifications_message_hub_push_log.is_success = 1 then 1 else 0 EN
 sum(case when `status` = 'app not downloaded' OR ( is_success = 0 AND exception_message = 'App not Downloaded' AND `status` != 'app not downloaded') then 1 else 0 END) AS `app_not_downloaded`,
 sum(case when `status` = 'failed' OR (is_success = 0 AND `status` not IN ('app not downloaded','failed') AND exception_message != 'App not Downloaded') then 1 else 0 END) AS `failed`,
 SUM(case when notifications_message_hub_push_log.is_success = 0 AND `status` not IN ('app not downloaded','failed') then 1 else 0 END) AS `later_downloaded`,
-SUM(notifications_message_hub_push_log.open_status) AS `view`, 
+SUM(notifications_message_hub_push_log.open_status) AS `viewed`, 
 SUM(case when (read_status = 1 AND engaged_status=1) then 1
              when (read_status = 1 AND engaged_status=0) then 1
              when (read_status = 0 AND engaged_status=1) then 1
@@ -2307,5 +2307,64 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
             $userActionDetails->where([['engaged_status',1],['completed_status',1]]);
         }
         return $userActionDetails->get();
+    }
+
+
+    /**
+     * https://strive.atlassian.net/browse/BP-3252
+     * @param $message_id
+     * @return object 
+     */
+    public function getPushNotificationLogCountEmployeeList($message_id, $status, $striveUserNotification = false)
+    {
+        $query = DB::table('notifications_message_hub_push_log')
+            ->join('users', 'users.id', '=', 'notifications_message_hub_push_log.employee_id')
+            ->join('notifications_message_hub','notifications_message_hub_push_log.message_id','=','notifications_message_hub.id')
+            ->where('message_id', $message_id);
+
+        if($status == 'delivered') {
+            $query->where('notifications_message_hub_push_log.is_success', 1);
+        } elseif($status == 'viewed') {
+            $query->where('notifications_message_hub_push_log.open_status', 1);
+        } elseif($status == 'engaged') {
+            $query->where(function($query1){
+                $query1->where(function($q){
+                    $q->where('notifications_message_hub_push_log.read_status', 1)->where('notifications_message_hub_push_log.engaged_status', 1);
+                })->orWhere(function($q){
+                    $q->where('notifications_message_hub_push_log.read_status', 1)->where('notifications_message_hub_push_log.engaged_status', 0);
+                })->orWhere(function($q){
+                    $q->where('notifications_message_hub_push_log.read_status', 0)->where('notifications_message_hub_push_log.engaged_status', 1);
+                });
+            });
+        } elseif($status == 'completed') {
+            $query->where(function($query1){
+                $query1->where(function($q){
+                    $q->where('notifications_message_hub_push_log.completed_status', 1);
+                    $q->where(function($q1){
+                        $q1->where('notifications_message_hub.target_screen', '!=', '')->orWhere('notifications_message_hub.action_url', '!=', '')
+                        ->orWhereIn('created_from', ['explore_notifcation','customised_challenge_notification']);
+                    });
+                })->orWhere(function($q){
+                    $q->where('notifications_message_hub_push_log.read_status', 1)->where('notifications_message_hub_push_log.engaged_status', 1)
+                    ->where('notifications_message_hub.target_screen', '')->where('notifications_message_hub.action_url', '');
+                })->orWhere(function($q){
+                    $q->where('notifications_message_hub_push_log.read_status', 1)->where('notifications_message_hub_push_log.engaged_status', 0)
+                    ->where('notifications_message_hub.target_screen', '')->where('notifications_message_hub.action_url', '');
+                })->orWhere(function($q){
+                    $q->where('notifications_message_hub_push_log.read_status', 0)->where('notifications_message_hub_push_log.engaged_status', 1)
+                    ->where('notifications_message_hub.target_screen', '')->where('notifications_message_hub.action_url', '');
+                });
+            });
+        }
+
+        if ($striveUserNotification) {
+            if (Session::get('role') == Roles::ROLE_BROKER) {
+                $query->where('users.broker_id', getBrokerId());
+            } else {
+                $query->where('employer_id', getEmployerId());
+            }
+        }
+
+        return $query->select(DB::raw("CONCAT(users.first_name, ' ', users.last_name) AS fullName"), 'users.email','notifications_message_hub.created_from')->get();
     }
 }

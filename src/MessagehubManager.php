@@ -1157,4 +1157,14 @@ class MessagehubManager
             }
         }
     }
+
+    /**
+     * https://strive.atlassian.net/browse/BP-3252
+     * getPushNotificationLogEmployeeList.
+     * @param $id, $status, $striveUserNotification
+     */
+    public function getPushNotificationLogEmployeeList($id, $status, $striveUserNotification = false)
+    {
+        return $this->messagehubRepository->getPushNotificationLogCountEmployeeList($id, $status, $striveUserNotification);
+    }
 }
