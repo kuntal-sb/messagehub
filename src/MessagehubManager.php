@@ -22,6 +22,7 @@ use App\Models\Roles;
 use App\Http\Repositories\NewAppUserRepository;
 use App\Http\Repositories\NotificationSettingUserMappingRepository;
 use App\Http\Repositories\AutomatedNotificationSettingRepository;
+use App\Http\Managers\ContentManager;
 
 class MessagehubManager
 {
@@ -1037,7 +1038,15 @@ class MessagehubManager
      * @param  array $requestData
      */
     public function updateMessage($request){
-        return $this->messagehubRepository->updateMessage($request);
+        if (!empty($request->logo)) {
+            $contentManager = app()->make(ContentManager::class);
+            $thumbnailUrl = $contentManager->storeThumbnail($request->logo);
+        } else if (!empty($request->stored_icon)) {
+            $thumbnailUrl = $request->stored_icon;
+        } else {
+            $thumbnailUrl = "";
+        }
+        return $this->messagehubRepository->updateMessage($request, $thumbnailUrl);
     }
 
     /**

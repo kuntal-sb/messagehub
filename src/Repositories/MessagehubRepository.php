@@ -311,7 +311,7 @@ class MessagehubRepository extends BaseRepository
 
         $notifications = $notifications->whereIn('notifications_message_hub.id', $messageIds);
 
-        return $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.expiry_date','notifications_message_hub.created_from','notifications_message_hub.created_as'])->orderBy('created_at', 'desc');
+        return $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.expiry_date','notifications_message_hub.created_from','notifications_message_hub.created_as','notifications_message_hub.sent_from','notifications_message_hub.logo','notifications_message_hub.target_title','notifications_message_hub.target_screen','notifications_message_hub.action_url','notifications_message_hub.thumbnail','notifications_message_hub.category_id'])->orderBy('created_at', 'desc');
     }
 
     /**
@@ -2175,13 +2175,37 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
      * @param request
      * @return
      */
-    public function updateMessage($request){
+    public function updateMessage($request, $thumbnailUrl = ''){
         try{
-            $data = ['title' => $request->title,
-                    'message' => (!empty($request->message))?$this->model->parseMessage($request->message):'',
-                    'expiry_date'=> ($request->expiry_date!=='')?date('Y-m-d',strtotime($request->expiry_date)):''];
+            $data = [
+                'title' => $request->title,
+                'message' => (!empty($request->message)) ? $this->model->parseMessage($request->message) : '',
+                'expiry_date' => ($request->expiry_date !== '') ? date('Y-m-d', strtotime($request->expiry_date)) : '',
+                'sent_from' => !empty($request->sent_from) ? $request->sent_from : 'HR Team',
+                'logo' => !empty($request->logo) ? $request->logo : '',
+                'target_title' => !empty($request->target_title) ? $request->target_title : '',
+                'target_screen' => !empty($request->target_screen) ? $request->target_screen : 'oehub',
+                'target_screen_param' => !empty($request->target_screen_param) ? $request->target_screen_param : '',
+                'action_url' => !empty($request->url) ? $request->url : '',
+                'category_id' => !empty($request->post_category_id) ? $request->post_category_id : 0,
+                'logo' => $thumbnailUrl,
+                'thumbnail' => !empty($request->thumbnail) ? $request->thumbnail : '',
+            ];
             $id = base64_decode($request->id);
             NotificationMessageHub::where('id',$id)->update($data);
+
+            if(isset($request['tags']) && !empty($request['tags'])){
+                NotificationTags::where('notification_id', $id)->delete();
+                $tagData = [];
+                foreach($request['tags'] as $hashtag){
+                    $tagData[] = [
+                        'notification_id' => $id,
+                        'tag_id' => $hashtag,
+                        'created_at' => carbon::now()
+                    ];
+                }
+                NotificationTags::insert($tagData);
+            }
             $elkRepository = app()->make(ElasticRepository::class);
             $elasticManager = app()->make(ElasticManager::class);
             $recordId = $elkRepository->getDocumentId(config('analytics.strive_global_connect'), ['message_id' => $id]);
