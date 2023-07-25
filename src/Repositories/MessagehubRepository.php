@@ -1773,8 +1773,19 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
                 }
                 $query->join('app_instances', 'app_instance_assigned.app_instance_id', '=', 'app_instances.id');
             } else {
-                $query->leftJoin('app_instance_assigned','app_instance_assigned.user_id','=','users.id')
-                ->join('app_instances', 'app_instance_assigned.app_instance_id', '=', 'app_instances.id');
+                //$query->leftJoin('app_instance_assigned','app_instance_assigned.user_id','=','users.id')
+                //->join('app_instances', 'app_instance_assigned.app_instance_id', '=', 'app_instances.id');
+
+                if (!$includeSpouseDependents) {
+                    $query->join('app_instance_assigned', 'app_instance_assigned.user_id', '=', 'users.id');
+                } else {
+                    $query->leftJoin('emplyoee_spouse', 'emplyoee_spouse.spouse_id', '=', 'users.id');
+                    $query->join('app_instance_assigned', function($join){
+                        $join->on('app_instance_assigned.user_id', '=', 'users.id');
+                        $join->orOn('app_instance_assigned.user_id', '=', 'emplyoee_spouse.employee_id');
+                    });
+                }
+                $query->join('app_instances', 'app_instance_assigned.app_instance_id', '=', 'app_instances.id');
             }
 
             //filter record based on email if provided
