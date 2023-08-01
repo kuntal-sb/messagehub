@@ -1472,7 +1472,7 @@ class MessagehubRepository extends BaseRepository
         $query = DB::table('notifications_message_hub_push_log')
             ->join('notifications_message_hub','notifications_message_hub_push_log.message_id','=','notifications_message_hub.id')
             ->selectRaw("COUNT(notifications_message_hub_push_log.id) AS `sent`, 
-SUM(case when notifications_message_hub_push_log.is_success = 1 then 1 else 0 END) AS `delivered`,  
+COUNT(notifications_message_hub_push_log.id) AS `delivered`,  
 sum(case when `status` = 'app not downloaded' OR ( is_success = 0 AND exception_message = 'App not Downloaded' AND `status` != 'app not downloaded') then 1 else 0 END) AS `app_not_downloaded`,
 sum(case when `status` = 'failed' OR (is_success = 0 AND `status` not IN ('app not downloaded','failed') AND exception_message != 'App not Downloaded') then 1 else 0 END) AS `failed`,
 SUM(case when notifications_message_hub_push_log.is_success = 0 AND `status` not IN ('app not downloaded','failed') then 1 else 0 END) AS `later_downloaded`,
@@ -2358,7 +2358,7 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
             ->where('message_id', $message_id);
 
         if($status == 'delivered') {
-            $query->where('notifications_message_hub_push_log.is_success', 1);
+            //$query->where('notifications_message_hub_push_log.is_success', 1);
         } elseif($status == 'viewed') {
             $query->where('notifications_message_hub_push_log.open_status', 1);
         } elseif($status == 'engaged') {

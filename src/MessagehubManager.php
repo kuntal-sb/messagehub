@@ -23,6 +23,7 @@ use App\Http\Repositories\NewAppUserRepository;
 use App\Http\Repositories\NotificationSettingUserMappingRepository;
 use App\Http\Repositories\AutomatedNotificationSettingRepository;
 use App\Http\Managers\ContentManager;
+use App\Http\Managers\AutomatedNotificationTemplateManager;
 
 class MessagehubManager
 {
@@ -426,7 +427,20 @@ class MessagehubManager
                     $messagehubData = $this->messagehubRepository->getNotificationsWithSubCategory($message_id);
                     $data['title'] = $messagehubData->sub_cat_title;
                 }
-                $this->sendNotification($data, $logID, $message_id, $unreadCount);
+                
+                //Check for secondary notification condition
+                if(isset($data['checkSecondaryNotification']) && $data['checkSecondaryNotification'] == 1){
+                    $automatedNotificationTemplateManager = app()->make(AutomatedNotificationTemplateManager::class);
+                    $checkSecondaryNotification = $automatedNotificationTemplateManager->secondaryPriorityNotifications($data['employee_id'], $data['employeesPartOfIt']);
+                    if(!$checkSecondaryNotification){
+                        $this->sendNotification($data, $logID, $message_id, $unreadCount);
+                        Log::info("SEND NOTIFICATION::".$data['created_from']." USER::".$data['employee_id']);
+                    }else{
+                        Log::info("SECONDARY NOTIFICATION LIMIT REACH::".$data['created_from']." USER::".$data['employee_id']);
+                    }
+                }else{
+                    $this->sendNotification($data, $logID, $message_id, $unreadCount);
+                }
             }
         }catch(Exception $e){
             Log::error($e);
