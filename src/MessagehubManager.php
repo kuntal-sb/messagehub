@@ -416,6 +416,11 @@ class MessagehubManager
                /* if(!$isNewAppUser){
                     $unreadCount = $unreadCount + 1;
                 }*/
+
+                //In Elk entry get update in ProcessBulkPushNotification after this execution
+                if(isset($data['created_from']) && in_array($data['created_from'], ['notification','recognition_notification','global_raffle','customised_challenge_notification','explore_notifcation','birthday_wishes','work_anniversary_wishes','onboarding'])){
+                    $unreadCount = $unreadCount + 1;
+                }
             }
 
             $globalSettingsRepository = app()->make(GlobalSettingsRepository::class);

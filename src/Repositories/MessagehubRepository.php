@@ -418,6 +418,8 @@ class MessagehubRepository extends BaseRepository
                     ->orderBy('x.created_at', 'desc');
         return $query->get();
     }
+
+
     public function getMessageIds($employers)
     {
         $query1 = NotificationMessageHubPushLog::whereIn('employer_id', $employers)->pluck('message_id')->toArray();
