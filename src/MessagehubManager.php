@@ -656,9 +656,9 @@ class MessagehubManager
         return $this->messagehubRepository->getBrokerAndEmployerById($employer_id);
     }
 
-    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds =[], $includeSpouseDependents = false, $includeDemoAccounts = false)
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds =[], $includeSpouseDependents = false, $includeDemoAccounts = false, $userTimezone = null)
     {
-        return $this->messagehubRepository->getEmployeeList($type, $employers, $selectedEmployees, $emails, $filterTemplate, $appInstanceIds, $includeSpouseDependents, [], $includeDemoAccounts);
+        return $this->messagehubRepository->getEmployeeList($type, $employers, $selectedEmployees, $emails, $filterTemplate, $appInstanceIds, $includeSpouseDependents, [], $includeDemoAccounts, $userTimezone);
     }
 
     public function getEmployeeCount($type, $employers, $filterTemplate = '', $appInstanceIds = [], $includeSpouseDependents = false, $includeDemoAccounts = false)
@@ -699,7 +699,7 @@ class MessagehubManager
             }else{
                 if(isset($notifications->is_gamification_reminder) && $notifications->is_gamification_reminder == 1){
                     //get all avtive employers who have entry for Gamification
-                    $this->processGamificationReminderPushNotifications();
+                    $this->processGamificationReminderPushNotifications($notifications->gamification_reminder_type);
                 }elseif(isset($notifications->is_automated_notification) && $notifications->is_automated_notification == 1){
                     //get all active employers who have Automated Notifications
                     $this->processAutomatedNotifications($notifications->automated_type);
@@ -769,8 +769,22 @@ class MessagehubManager
      * @param 
      * @return
      */
-    public function processGamificationReminderPushNotifications()
+    public function processGamificationReminderPushNotifications($gamificationReminderType)
     {
+        $onlyGamificationEmployer = $onlyRecognitionEmployer = $onlyRedeemptionEmployer = False;
+
+        if($gamificationReminderType == 'Gamification'){
+            $onlyGamificationEmployer = True;
+        }else if($gamificationReminderType == 'Recognition'){
+            $onlyRecognitionEmployer = True;
+        }else if($gamificationReminderType == 'Redemption'){
+            $onlyRedeemptionEmployer = True;
+        }else if($gamificationReminderType == 'StarPoint'){
+            $onlyRedeemptionEmployer = True;
+            $onlyGamificationEmployer = True;
+        }
+
+
         $apps = $this->getAppList();
         foreach ($apps as $key => $app) {
             $brokerIds = $this->getAppBrokers([$app->id]);
@@ -778,7 +792,7 @@ class MessagehubManager
                 continue;
             }
             foreach($brokerIds as $brokerId){
-                $employerIds = array_column($this->getEmployerList([$brokerId],[], false, true, true), 'id');
+                $employerIds = array_column($this->getEmployerList([$brokerId],[], false, true, $onlyGamificationEmployer, $onlyRecognitionEmployer, $onlyRedeemptionEmployer), 'id');
                 Log::info("BROKER::". json_encode($brokerIds)." EMPLOYER::". json_encode($employerIds));
             if(empty($employerIds)){
                 continue;

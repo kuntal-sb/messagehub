@@ -1721,7 +1721,7 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
      * @param Array $employers, for which we need to get data
      * @return Array $selectedEmployees
      */
-    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds = [],$includeSpouseDependents = false, $excludeEmployees = array(), $includeDemoAccounts = false)
+    public function getEmployeeList($type, $employers, $selectedEmployees=array(), $emails = array(), $filterTemplate = '', $appInstanceIds = [],$includeSpouseDependents = false, $excludeEmployees = array(), $includeDemoAccounts = false, $userTimezone = null)
     {
         $employeeData = [];
         if(!is_array($employers)){
@@ -1740,6 +1740,11 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
 
             if(!$includeDemoAccounts){
                 $query->where('employeedetails.is_demo_account', 0);
+            }
+
+            //filter record based on timezone provided
+            if(!empty($userTimezone)) {
+                $query->where('users.timezone',$userTimezone);
             }
 
             if(!empty($selectedEmployees)){
@@ -1919,7 +1924,7 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
      * @param Array $brokers
      * @return Array Employers List
      */
-    public function getEmployerList($brokers, $selectedEmployers=array(), $emails = array(), $excludeBlockedEmployer = False, $onlyGamificationEmployer = False)
+    public function getEmployerList($brokers, $selectedEmployers=array(), $emails = array(), $excludeBlockedEmployer = False, $onlyGamificationEmployer = False, $onlyRecognitionEmployer = False, $onlyRedeemptionEmployer = False)
     {
         $employerData = [];
         if(!is_array($brokers)){
@@ -1948,12 +1953,19 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
                     ->whereNull('notification_blocked_employer.user_id');
             }
 
-            //Include only those employer whose Gamification or Recognition is enabled
-            if($onlyGamificationEmployer){
-                $query->join('gamification_employer_settings','users.id','=','gamification_employer_settings.employer_id')->where(function($query) {
-                    return $query
-                    ->where('gamification_employer_settings.allow_gamification', 1)
-                    ->orWhere('gamification_employer_settings.allow_recognition', 1);
+            //Include only those employer level enable/disable
+            if($onlyRedeemptionEmployer || $onlyRecognitionEmployer || $onlyGamificationEmployer){
+                $query->join('gamification_employer_settings','users.id','=','gamification_employer_settings.employer_id')
+                ->where(function($query) use($onlyGamificationEmployer, $onlyRecognitionEmployer, $onlyRedeemptionEmployer) {
+                        if($onlyGamificationEmployer){
+                            return $query->where('gamification_employer_settings.allow_gamification', 1);
+                        }
+                        if($onlyRecognitionEmployer){
+                            return $query->where('gamification_employer_settings.allow_recognition', 1);
+                        }
+                        if($onlyRedeemptionEmployer){
+                            return $query->where('gamification_employer_settings.allow_redeem', 1);
+                        }
                     });
             }
 
