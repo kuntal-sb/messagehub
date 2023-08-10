@@ -178,6 +178,8 @@ class MessagehubRepository extends BaseRepository
 
         $this->notificationData['mappedId'] = !empty($data['mappedId']) && !empty($data['created_from']) && $data['created_from'] == config('messagehub.post_type.global_raffle')? $data['mappedId']: null;
 
+        $this->notificationData['deviceType'] = !empty($data['deviceType']) ? $data['deviceType']: '';
+        $this->notificationData['user_agent'] = !empty($data['user_agent']) ? $data['user_agent']: '';
 
     }
 
@@ -991,6 +993,10 @@ class MessagehubRepository extends BaseRepository
                     $userRepository = app()->make(UsersRepository::class);
                     $userData = $userRepository->first(['id' => $employeeId], ['id','broker_id','referer_id']);
                     $brokerId = getBrokerFromEmployee($userData);
+
+                    $this->mappedUserTagRepository->deviceType = $this->notificationData['deviceType'] ?? '';
+                    $this->mappedUserTagRepository->user_agent = $this->notificationData['user_agent'] ?? '';
+
                     $this->mappedUserTagRepository->manageCommentUsertag($userTagArr, $mappedId, $notificationMessageId, $employeeListTagAll, $employerId, $brokerId, $pushMessage, $this->notificationData['created_from']);
                 }
 
