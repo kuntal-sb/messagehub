@@ -757,7 +757,8 @@ class MessagehubRepository extends BaseRepository
                     if(empty($employeeList)){
                         $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate, $appInstanceIds,$this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
                     }
-                    if($this->notificationData['notification_type'] == config('messagehub.notification.type.EMAIL')){
+                    //Task: https://strive.atlassian.net/browse/BP-3607 16-Aug-2023
+                    /*if($this->notificationData['notification_type'] == config('messagehub.notification.type.EMAIL')){
                         foreach($employees as $index => $employee){
                             $checkUnsubscribe = DB::table('unsubscribes')->where('user_id',$employee['id'])
                                                 ->where('emailtemplate_id',base64_decode($this->notificationData['email_template']))
@@ -766,7 +767,7 @@ class MessagehubRepository extends BaseRepository
                                 unset($employees[$index]);
                             }
                         }
-                    }
+                    }*/
                     $batchList[] = new ProcessBulkEmailNotification($employerId, $employees, $this->notificationData);
                 }
                 Bus::batch([
