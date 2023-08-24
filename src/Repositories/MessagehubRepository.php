@@ -649,7 +649,7 @@ class MessagehubRepository extends BaseRepository
                     Log::info('send_data  '.json_encode($send_data));
                     Log::info('logID '.json_encode($logID));
                     Log::info('deviceToken '.$deviceToken);
-                    Log::info('created_from '.$notificationData['created_from']);
+                    Log::info('created_from '.$this->notificationData['created_from']);
 
                     // Send Email/Text message to users who has not downloaded app. message will not send for user post(from mobile)
                     if($deviceToken == '' && (!in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post']))){
