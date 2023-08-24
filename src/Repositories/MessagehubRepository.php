@@ -645,11 +645,22 @@ class MessagehubRepository extends BaseRepository
 
                     $logID = $this->insertNotificationLog($send_data, $messageId, $messageStatus);
 
+                    Log::info('--------------------------------');
+                    Log::info('send_data  '.json_encode($send_data));
+                    Log::info('logID '.json_encode($logID));
+                    Log::info('deviceToken '.$deviceToken);
+                    Log::info('created_from '.$notificationData['created_from']);
+
                     // Send Email/Text message to users who has not downloaded app. message will not send for user post(from mobile)
                     if($deviceToken == '' && (!in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post']))){
+
                         ProcessBulkEmailNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
                         //ProcessBulkTextNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
+                    }else{
+                        Log::info('outside -- '. $employeeId);
                     }
+
+                    Log::info('--------------------------------');
                 }
             }
 
@@ -2268,6 +2279,9 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
     public function dispatchEmailNotificationForAppNotDownloaded($employees, $emailData)
     {
         try {
+            Log::info('EmailNotificationForAppNotDownloaded--');
+            Log::info('employees--'. json_encode($employees));
+
             $message = (new AppNotDownloadedEmail($emailData))->onQueue('email_queue');
             Mail::to($employees['email'])->queue($message);
         } catch (Exception $e) {
