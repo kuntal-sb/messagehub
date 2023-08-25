@@ -474,8 +474,14 @@ class MessagehubRepository extends BaseRepository
                 $batchList = [];
                 foreach($employerList as $employerId){
                     if(empty($employeeList)){
-                        $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
-                        array_push($employeeArr,array_column($employees, 'id'));
+                        if((isset($this->notificationData['is_automated_notification']) && $this->notificationData['is_automated_notification'] == 1) || (isset($this->notificationData['is_gamification_reminder']) && $this->notificationData['is_gamification_reminder'] == 1)){
+                            //Fetch employee timezone wise
+                            $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts'], $this->notificationData['timezone']);
+                            array_push($employeeArr,array_column($employees, 'id'));
+                        }else{
+                            $employees = $this->getEmployeeList(config('messagehub.notification.type.INAPP'), [$employerId], [], [], $filterTemplate, $appInstanceIds, $this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
+                            array_push($employeeArr,array_column($employees, 'id'));
+                        }
                     }
                     $batchList[] = new ProcessBulkPushNotification($brokerId, $employerId, $employees, $this->notificationData, $employeeArr);
                 }
