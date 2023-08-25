@@ -2443,4 +2443,8 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
 
         return $query->select(DB::raw("CONCAT(users.first_name, ' ', users.last_name) AS fullName"), 'users.email','notifications_message_hub.created_from')->get();
     }
+
+    public function setNotificationIds($Ids){
+        $this->notificationIds = $Ids;
+    }
 }
