@@ -56,6 +56,7 @@ use App\Models\NotificationTags;
 use App\Models\Roles;
 use App\Models\MongoDb\NotificationsMessageHubPushLog as NotificationsMessageHubPushLogMongo;
 use \Illuminate\Support\Str;
+use App\Models\EmployeeDeviceMapping;
 
 /**
  * Class MessagehubRepository
@@ -522,7 +523,8 @@ class MessagehubRepository extends BaseRepository
                 $employeeId = $employee;
                 $device_details = $this->getDevicebyEmployee($employeeId);
 
-                if($device_details){
+                if($device_details->isNotEmpty()){
+                    $device_details = $device_details->first();
                     $deviceToken = $device_details->device_id;
                     $deviceType  = $device_details->device_type;
                     $is_flutter  = $device_details->is_flutter;
@@ -1114,55 +1116,79 @@ class MessagehubRepository extends BaseRepository
      */
     public function fcmPush($data, $unreadCount, $notificationId, $comment_type = '')
     {
-        try {
-            $client = new Client($data['fcm_key']);
-            $recipient = new Recipient();
-            // Either Notification or Data (or both) instance should be created
-            $notification = new Notification();
-            // Recipient could accept individual device token,
-            // the name of topic, and conditional statement
-            $recipient -> setSingleRecipient($data['device_token']);
-            // Setup Notificaition title and body
+        $deviceTokenVal = $data['device_token'];
+        $deviceTokenList = explode(',', $deviceTokenVal);
+        $web_success = 0;
+        $is_success = 0;
+        $deviceTypeList = [];
+        foreach ($deviceTokenList as $deviceToken) {
+            try {
+                $deviceData = EmployeeDeviceMapping::where('device_id', $deviceToken)->first();
+                $deviceType = $deviceData->device_type ?? '';
 
-            $dataMessage = Str::limit(processPushNotificationText($data['message']), config('messagehub.payload_message_char_limit'),'....');
-            $notification -> setNotification($data['title'], $dataMessage);
+                $client = new Client($data['fcm_key']);
+                $recipient = new Recipient();
+                // Either Notification or Data (or both) instance should be created
+                $notification = new Notification();
+                // Recipient could accept individual device token,
+                // the name of topic, and conditional statement
 
-            // Build FCM request payload
-            //if($data['device_type'] !== 'appNameIOS'){
-                $comment_id = isset($data['comment_id']) ? $data['comment_id'] : 0;
-                $parent_comment_id = isset($data['parent_comment_id']) ? $data['parent_comment_id'] : 0;
+                $recipient -> setSingleRecipient($deviceToken);
+                // Setup Notificaition title and body
 
-                $fcmData = new Data();
-                
-                $fcmDataArr = [];
-                $fcmDataArr['data'] = ['random_id' => (string) rand(10000000,99999999),'unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId, 'comment_id' =>(string) $comment_id, 'parent_comment_id' =>(string) $parent_comment_id,  'msg_type' => "new",  'target_screen' => $data['target_screen'],  'target_screen_param' => isset($data['target_screen_param'])?$data['target_screen_param']:''];
-                
-                $fcmDataArr['apns'] = ['payload' => ['aps'=>['badge'=>$unreadCount,'contentAvailable' => true]]];
-                
-                $fcmDataArr['data']['comment_type'] = $comment_type;
+                $dataMessage = Str::limit(processPushNotificationText($data['message']), config('messagehub.payload_message_char_limit'),'....');
+                $notification -> setNotification($data['title'], $dataMessage);
 
-                Log::info("FCM DATA: ".json_encode($fcmDataArr)."  Message: ".$data['message']);
+                // Build FCM request payload
+                //if($data['device_type'] !== 'appNameIOS'){
+                    $comment_id = isset($data['comment_id']) ? $data['comment_id'] : 0;
+                    $parent_comment_id = isset($data['parent_comment_id']) ? $data['parent_comment_id'] : 0;
 
-                $fcmData->setPayload($fcmDataArr);
-                $client -> build($recipient, $notification, $fcmData);
+                    $fcmData = new Data();
 
-            // }else{
-            //     $client -> build($recipient, $notification);
-            // }
-            if(isset($data['is_gamification_reminder']) && $data['is_gamification_reminder'] == 1 && !config('notification.PUSH_GAMIFICATION_REMINDER')){
-                $message = '-- Added To Log Only --';
-                $is_success = 1;
-            }else{
-                $message = $client -> fire();
-                $is_success = $message ===true?1:0;
+                    $fcmDataArr = [];
+                    $fcmDataArr['data'] = ['random_id' => (string) rand(10000000,99999999),'unread_count' =>(string) $unreadCount, 'notification_id' =>(string) $notificationId, 'comment_id' =>(string) $comment_id, 'parent_comment_id' =>(string) $parent_comment_id,  'msg_type' => "new",  'target_screen' => $data['target_screen'],  'target_screen_param' => isset($data['target_screen_param'])?$data['target_screen_param']:''];
+
+                    $fcmDataArr['apns'] = ['payload' => ['aps'=>['badge'=>$unreadCount,'contentAvailable' => true]]];
+
+                    $fcmDataArr['data']['comment_type'] = $comment_type;
+
+                    Log::info("FCM DATA: ".json_encode($fcmDataArr)."  Message: ".$data['message']);
+
+                    $fcmData->setPayload($fcmDataArr);
+                    $client -> build($recipient, $notification, $fcmData);
+                    array_push($deviceTypeList, $deviceType);
+                // }else{
+                //     $client -> build($recipient, $notification);
+                // }
+                if(isset($data['is_gamification_reminder']) && $data['is_gamification_reminder'] == 1 && !config('notification.PUSH_GAMIFICATION_REMINDER')){
+                    $message = '-- Added To Log Only --';
+
+                    if($deviceType == 'web') {
+                        $web_success = 1;
+                    } else {
+                        $is_success = 1;
+                    }
+                }else{
+                    $message = $client -> fire();
+                    if($message ===true) {
+                        if($deviceType == 'web') {
+                            $web_success = 1;
+                        } else {
+                            $is_success = 1;
+                        }
+                    }
+
+                }
+            } catch (Exception $e) {
+                Log::error($e);
+                $is_success = 0;
+                $message = $e->getMessage();
+                $web_success = 0;
             }
-        } catch (Exception $e) {
-            Log::error($e);
-            $is_success = 0;
-            $message = $e->getMessage();
         }
 
-        return ['is_success' => $is_success, 'exception_message' => $message];
+        return ['is_success' => $is_success, 'exception_message' => $message, 'web_success' => $web_success, 'device_type_list' => $deviceTypeList];
     }
 
     /**
@@ -1187,12 +1213,13 @@ class MessagehubRepository extends BaseRepository
     public function getDevicebyEmployee($employeeId)
     {
         return DB::table('employee_device_mapping')
-                        ->select('device_id','device_type','is_flutter')
+                        ->select(DB::raw('GROUP_CONCAT(device_id) AS device_id'),'device_type','is_flutter')
                         ->where('employee_id','=',$employeeId)
                         ->whereNotNull('device_type')
                         ->where('device_type','!=','')
                         ->orderBy('updated_at','DESC')
-                        ->first();
+                        ->groupBy('employee_id')
+                        ->get();
     }
 
     /**
@@ -1832,9 +1859,7 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
 
             //Get only those users who has downloaded app
             $query->when(in_array($type,[config('messagehub.notification.type.INAPP')]), function ($q) {
-                /*return $q->getActiveAppUser()
-                                ->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type','employee_device_mapping.is_flutter');*/
-                return $q->leftJoin('employee_device_mapping', 'employee_device_mapping.employee_id', '=', 'users.id')->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type','employee_device_mapping.is_flutter');
+                return $q->leftJoin('employee_device_mapping', 'employee_device_mapping.employee_id', '=', 'users.id')->addSelect(DB::raw('GROUP_CONCAT(employee_device_mapping.device_id) AS device_id'),'employee_device_mapping.device_type','employee_device_mapping.is_flutter')->groupBy('users.id');
             });
 
             //Get only those users with mobile number
@@ -1850,7 +1875,7 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
             if($type == config('messagehub.notification.type.INAPPTEXT')){
                 $query1 = clone $query;
                 $query = $query->getUserByMobile()->condHasMobile()->addSelect('employee_demographics.phone_number', DB::raw('null as device_id'), DB::raw('null as device_type'), DB::raw('null as is_flutter'))->get();
-                $query1 = $query1->leftJoin('employee_device_mapping', 'employee_device_mapping.employee_id', '=', 'users.id')->addSelect('employee_device_mapping.device_id','employee_device_mapping.device_type','employee_device_mapping.is_flutter', DB::raw('"" as phone_number'))->get();
+                $query1 = $query1->leftJoin('employee_device_mapping', 'employee_device_mapping.employee_id', '=', 'users.id')->addSelect(DB::raw('GROUP_CONCAT(employee_device_mapping.device_id) AS device_id'),'employee_device_mapping.device_type','employee_device_mapping.is_flutter', DB::raw('"" as phone_number'))->groupBy('users.id')->get();
                 $employeeData = array_merge($employeeData, $query1->merge($query)->toArray());
             }else{
                 $employeeData = array_merge($employeeData, $query->get()->toArray());

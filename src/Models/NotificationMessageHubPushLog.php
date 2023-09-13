@@ -24,6 +24,8 @@ class NotificationMessageHubPushLog extends Model
         'completed_status',
         'delivered_status',
         'status',
+        'web_success',
+        'web_status',
         'created_at',
         'updated_at',
     ];

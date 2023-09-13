@@ -484,15 +484,26 @@ class MessagehubManager
                 Log::info(json_encode($fcmPush));
                 $is_success = $fcmPush['is_success'];
                 $exception_message = $fcmPush['exception_message'];
+                $web_success = $fcmPush['web_success'] ?? 0;
+                $device_type_list = $fcmPush['device_type_list'] ?? [];
             }
-            
+
+            //Ticket : https://strive.atlassian.net/browse/BP-3395
+            //Manage Web app notification status in push notification table
             if(!(isset($data['is_gamification_reminder']) && $data['is_gamification_reminder'] == 1)){
                 $update_log_data = array(
                         'is_success' => $is_success,
                         'status' => $is_success==1?'sent':'failed',
                         'exception_message' => $exception_message,
-                        'updated_at'=>Carbon::now()
+                        'updated_at'=>Carbon::now(),
+                        'web_success' => $web_success,
                     );
+
+                    //Changes to update web_status in push log table only when web device token exist
+                    $update_log_data['web_status'] = null;
+                    if(in_array('web', $device_type_list)) {
+                        $update_log_data['web_status'] = $web_success==1? 'sent':'failed';
+                    }
 
                 //Log::error('--exception_message--'.$exception_message);
 
@@ -503,15 +514,26 @@ class MessagehubManager
                 $elasticData = [
                         "userId" => $data['employee_id'],
                         "screenName" => "MessageHub",
-                        "eventName" => "Delivered",
+                        "eventName" => "",
                         "eventType" => "Notification",
                         "resend" => isset($data['is_resend'])?isset($data['is_resend']):false,
-                        "notificationId" => $logID
+                        "notificationId" => $logID,
                     ];
-                if($is_success == 1){
-                    $elasticData['eventName'] = "Delivered";
-                }else{
-                    $elasticData['eventName'] = "Failed";
+
+                //Changes to update eventName in elk log table only when android/ios device token exist
+                if(!empty(array_intersect(['ios', 'android'], $device_type_list))) {
+                    if($is_success == 1){
+                        $elasticData['eventName'] = "Delivered";
+                    }else{
+                        $elasticData['eventName'] = "Failed";
+                    }
+                }
+
+                //Ticket : https://strive.atlassian.net/browse/BP-3395
+                //Manage Web app notification status in elk data only when web device token exist
+                $elasticData['webEventName'] = '';
+                if(in_array('web', $device_type_list)) {
+                    $elasticData['webEventName'] = $web_success == 1? 'Delivered':'Failed';
                 }
                 SendLogToElastic::dispatch($elasticData)->onQueue('elastic_queue');
             }
