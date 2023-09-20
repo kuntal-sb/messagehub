@@ -720,6 +720,20 @@ class MessagehubManager
                 $notifications->thumbnail_path = $notifications->thumbnail;
             }
             $this->setNotificationData($notifications->toArray());
+
+            //https://strive.atlassian.net/browse/BP-3970
+            //Set email template real time data in notification data from stored email template id
+            if(!empty($notifications->notification_type) && $notifications->notification_type == config('messagehub.notification.type.EMAIL')) {
+                $emailTemplateRepository = app()->make(EmailTemplateRepository::class);
+                if(!empty($notifications->email_template)) {
+                    $emailTemplateData = $emailTemplateRepository->findById(base64_decode($notifications->email_template));
+                    if(!empty($emailTemplateData)) {
+                        $notifications->email_subject = $emailTemplateData->email_subject;
+                        $notifications->email_body = $emailTemplateData->email_body;
+                    }
+                }
+            }
+
             $this->generateTransactionId();
             if($notifications->sent_type == 'choose-app' && !empty($notifications->apps)){// If schedule by admin app wise
                 $this->processNotificationsByApp($notifications->apps);
