@@ -1323,14 +1323,6 @@ class MessagehubRepository extends BaseRepository
                     $response = ['status_code'=>400,'message'=>'Unable to update schedule'];
                 }
             }else{
-                //https://strive.atlassian.net/browse/BP-3970
-                //If notification type is email and email template is selected then store email_subject and email_body as empty
-                //As email template real time data would be used from stored email template id while sending notification
-                if($data['notification_type'] == config('messagehub.notification.type.EMAIL') && !empty($data['email_template'])) {
-                    $data['email_body'] = "";
-                    $data['email_subject'] = "";
-                }
-                
                 $data['status'] = 'Scheduled';
                 $notificationSchedule = NotificationSchedule::create($data);
 

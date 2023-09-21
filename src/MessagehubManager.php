@@ -728,8 +728,7 @@ class MessagehubManager
                 if(!empty($notifications->email_template)) {
                     $emailTemplateData = $emailTemplateRepository->findById(base64_decode($notifications->email_template));
                     if(!empty($emailTemplateData)) {
-                        $notifications->email_subject = $emailTemplateData->email_subject;
-                        $notifications->email_body = $emailTemplateData->email_body;
+                        $notifications->email_body = $emailTemplateData->email_header . $emailTemplateData->email_body . $emailTemplateData->email_footer;
                     }
                 }
             }
