@@ -57,6 +57,7 @@ use App\Models\Roles;
 use App\Models\MongoDb\NotificationsMessageHubPushLog as NotificationsMessageHubPushLogMongo;
 use \Illuminate\Support\Str;
 use App\Models\EmployeeDeviceMapping;
+use App\Http\Repositories\EmployeeDetailsRepository;
 
 /**
  * Class MessagehubRepository
@@ -648,8 +649,18 @@ class MessagehubRepository extends BaseRepository
                 $this->increment ++;
             }else{//user has no device so make entry into notifications_message_hub_push_log with failed status when not resending message
                 if(!$this->isResend && $is_gamification_reminder == 0){
-                    $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $messageId,'message' => (string) $this->notificationData['message'],'title' => $this->notificationData['title'],'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'],'exception_message'=>'App not Downloaded' );
+                    $exceptionMessage = 'App not Downloaded';
                     $messageStatus = 'App Not Downloaded';
+
+                    $employeeDetailsRepository = app()->make(EmployeeDetailsRepository::class);
+                    $employeeDetailData = $employeeDetailsRepository->first(['user_id' => $employeeId],['id','is_app_downloaded']);
+
+                    if($employeeDetailData && $employeeDetailData->is_app_downloaded == 1){
+                        $exceptionMessage = 'Device not Found';
+                        $messageStatus = 'failed';
+                    }
+
+                    $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $messageId,'message' => (string) $this->notificationData['message'],'title' => $this->notificationData['title'],'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'],'exception_message' => $exceptionMessage);
 
                     $logID = $this->insertNotificationLog($send_data, $messageId, $messageStatus);
 
