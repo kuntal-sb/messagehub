@@ -968,7 +968,7 @@ class MessagehubRepository extends BaseRepository
                         $notification_type = config('notification.NOTIFICATION_ELK_TYPE.GENERAL');
                     }
 
-                    if(!$employeeDataToElk){
+                    if(!$employeeDataToElk &&  !in_array($this->notificationData['created_from'],['customised_challenge_notification','aggregated_notification'])){
                         $elasticManager->postNotificationToElk($employeeArr, $notificationMessageId, $mappedId, $this->notificationData, $employerId, $notification_type);
                     }
                 }
