@@ -585,14 +585,14 @@ class MessagehubRepository extends BaseRepository
                 if(isset($this->notificationData['pin_message']) && $this->notificationData['pin_message'] == 1){
                     $checkPin = PinnedMessages::where('message_id',$messageId)->first();
                     if(is_null($checkPin)){
-                        $pinnedMessages = PinnedMessages::where('employer_id',$employerId)
+                        /*$pinnedMessages = PinnedMessages::where('employer_id',$employerId)
                                             ->whereNotNull('pin_at')->orderBy('pin_at','ASC')
                                             ->get();
                         //Check if user pinned more than configured limited messages
                         if(count($pinnedMessages) == Config('constants.LIMIT_PIN_MESSAGE')){
                             PinnedMessages::where('message_id',$pinnedMessages[0]->message_id)->delete();
-                        }
-                        $pinData = ['message_id' => $messageId,'employer_id' => $employerId,'pin_at' => Carbon::now()];
+                        }*/
+                        $pinData = ['message_id' => $messageId,'employer_id' => $employerId,'pin_at' => Carbon::now(),'created_at' => Carbon::now(), 'updated_at' => Carbon::now()];
                         PinnedMessages::insert($pinData);
                     }
                 }
