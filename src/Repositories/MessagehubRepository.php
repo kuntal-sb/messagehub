@@ -1986,7 +1986,7 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
      * @param Array $brokers
      * @return Array Employers List
      */
-    public function getEmployerList($brokers, $selectedEmployers=array(), $emails = array(), $excludeBlockedEmployer = False, $onlyGamificationEmployer = False, $onlyRecognitionEmployer = False, $onlyRedeemptionEmployer = False)
+    public function getEmployerList($brokers, $selectedEmployers=array(), $emails = array(), $excludeBlockedEmployer = False, $onlyGamificationEmployer = False, $onlyRecognitionEmployer = False, $onlyRedeemptionEmployer = False, $includeOnlyActiveEmployer = False)
     {
         $employerData = [];
         if(!is_array($brokers)){
@@ -1998,6 +1998,10 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
             if(Session::get('role') === config('role.BROKEREMPLOYEE')){ 
                 $query->join('broker_employee_cms_mapping', 'users.id','=','broker_employee_cms_mapping.employer_id') 
                     ->where('broker_employee_id','=',Auth::user()->id);
+            }
+
+            if($includeOnlyActiveEmployer){
+                $query->where('employerdetails.app_status', 'Active');
             }
 
             $query->where('users.referer_id', $brokerId)

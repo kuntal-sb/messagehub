@@ -694,10 +694,10 @@ class MessagehubManager
         return $this->messagehubRepository->getEmployeeCount($type, $employers, $filterTemplate, $appInstanceIds, $includeSpouseDependents, $includeDemoAccounts);
     }
 
-    public function getEmployerList($brokerList, $selectedEmployers = array(), $sms_enabled = false, $excludeBlockedEmployer = False, $onlyGamificationEmployer = False)
+    public function getEmployerList($brokerList, $selectedEmployers = array(), $sms_enabled = false, $excludeBlockedEmployer = False, $onlyGamificationEmployer = False, $includeOnlyActiveEmployer = False)
     {
         $this->messagehubRepository->setSmsEnabled($sms_enabled);
-        return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers, [], $excludeBlockedEmployer, $onlyGamificationEmployer);
+        return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers, [], $excludeBlockedEmployer, $onlyGamificationEmployer, False, False, $includeOnlyActiveEmployer);
     }
 
     public function getBrokerList($role)
@@ -946,10 +946,11 @@ class MessagehubManager
      * @param array ids of app
      * @return broker and employer by app
      */
-    public function getAppEmployers($ids, $excludeBlockedEmployer = False)
+
+    public function getAppEmployers($ids, $excludeBlockedEmployer = False, $includeOnlyActiveEmployer = False)
     {
         $brokerList =  $this->messagehubRepository->getAppBrokers($ids);
-        $employerList =  $this->messagehubRepository->getEmployerList($brokerList, [], [], $excludeBlockedEmployer);
+        $employerList =  $this->messagehubRepository->getEmployerList($brokerList, [], [], $excludeBlockedEmployer, False, False, False, $includeOnlyActiveEmployer);
         return ['brokerList' => $brokerList, 'employerList' => $employerList];
     }
 
