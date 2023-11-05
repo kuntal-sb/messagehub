@@ -428,7 +428,7 @@ class MessagehubManager
             $globalSettingData = $globalSettingsRepository->baseQuery([],['id','field','value'])->whereIn('field',['USER_GENERATED_POST', 'CUSTOMISED_CHALLENGE_NOTIFICATION'])->pluck('value','field')->toArray();
 
             // To Avoid push notification in some cases
-            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && in_array($data['created_from'], ['user_post','recognition_user_post','customised_challenge_post', 'aggregated_post']) && $globalSettingData['USER_GENERATED_POST'] == "0")  && !(isset($data['created_from']) && in_array($data['created_from'], ['customised_challenge_notification'])  && $globalSettingData['CUSTOMISED_CHALLENGE_NOTIFICATION'] == "0")){
+            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && in_array($data['created_from'], ['user_post','recognition_user_post','customised_challenge_post', 'aggregated_post', 'aggregated_notification']) && $globalSettingData['USER_GENERATED_POST'] == "0")  && !(isset($data['created_from']) && in_array($data['created_from'], ['customised_challenge_notification'])  && $globalSettingData['CUSTOMISED_CHALLENGE_NOTIFICATION'] == "0")){
                 // if(isset($data['created_from']) && in_array($data['created_from'], ['user_post'])){
                 //     $messagehubData = $this->messagehubRepository->getNotificationsWithSubCategory($message_id);
                 //     $data['title'] = $messagehubData->sub_cat_title;
