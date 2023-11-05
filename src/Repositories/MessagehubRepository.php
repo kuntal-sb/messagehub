@@ -671,7 +671,7 @@ class MessagehubRepository extends BaseRepository
                     Log::info('created_from '.$this->notificationData['created_from']);
 
                     // Send Email/Text message to users who has not downloaded app. message will not send for user post(from mobile)
-                    if($deviceToken == '' && (!in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post']))){
+                    if($deviceToken == '' && (!in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post','aggregated_post']))){
 
                         ProcessBulkEmailNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
                         //ProcessBulkTextNotificationAppNotDownloaded::dispatch($employerId,$employeeId, $this->notificationData);
@@ -945,7 +945,7 @@ class MessagehubRepository extends BaseRepository
                     if (($key = array_search($this->notificationData['created_by'], $employeeArr)) !== false) {
                         unset($employeeArr[$key]);
                             }
-                            if(!empty($userTagArr) && in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post'])){
+                            if(!empty($userTagArr) && in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post', 'aggregated_post'])){
                                 $employeeArr = array_diff_key($employeeArr, array_flip($userTagArr));
                             }
                             break;
@@ -955,7 +955,7 @@ class MessagehubRepository extends BaseRepository
                                 unset($employeeArr[$mainKey]);
                                 $employeeArr[$mainKey] = array_values($valueEmployeeArr);
                             }
-                            if(!empty($userTagArr) && in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post'])){
+                            if(!empty($userTagArr) && in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post','aggregated_post'])){
                                 $valueEmployeeArr = array_diff_key($valueEmployeeArr, array_flip($userTagArr));
                                 unset($employeeArr[$mainKey]);
                                 $employeeArr[$mainKey] = array_values($valueEmployeeArr);
@@ -964,7 +964,7 @@ class MessagehubRepository extends BaseRepository
                     }
 
                     $notification_type = config('notification.NOTIFICATION_ELK_TYPE.PRIORITY');
-                    if(in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post'])){
+                    if(in_array($this->notificationData['created_from'], ['user_post','recognition_user_post','customised_challenge_post','aggregated_post'])){
                         $notification_type = config('notification.NOTIFICATION_ELK_TYPE.GENERAL');
                     }
 

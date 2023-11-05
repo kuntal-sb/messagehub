@@ -410,7 +410,7 @@ class MessagehubManager
                 $logID  = $data['push_message_id'];
             }else{
                 $messageStatus = '';
-                if(isset($data['created_from']) && in_array($data['created_from'], ['user_post','recognition_user_post','customised_challenge_post']) && $data['created_by'] == $data['employee_id'] ){
+                if(isset($data['created_from']) && in_array($data['created_from'], ['user_post','recognition_user_post','customised_challenge_post', 'aggregated_post']) && $data['created_by'] == $data['employee_id'] ){
                     $messageStatus = 'read';
                 }
                 $logID = $this->messagehubRepository->insertNotificationLog($data, $message_id, $messageStatus);
@@ -428,7 +428,7 @@ class MessagehubManager
             $globalSettingData = $globalSettingsRepository->baseQuery([],['id','field','value'])->whereIn('field',['USER_GENERATED_POST', 'CUSTOMISED_CHALLENGE_NOTIFICATION'])->pluck('value','field')->toArray();
 
             // To Avoid push notification in some cases
-            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && in_array($data['created_from'], ['user_post','recognition_user_post','customised_challenge_post']) && $globalSettingData['USER_GENERATED_POST'] == "0")  && !(isset($data['created_from']) && in_array($data['created_from'], ['customised_challenge_notification'])  && $globalSettingData['CUSTOMISED_CHALLENGE_NOTIFICATION'] == "0")){
+            if(!(isset($data['created_by'])  && ($data['created_by'] == $data['employee_id']))  && !(isset($data['created_from']) && in_array($data['created_from'], ['user_post','recognition_user_post','customised_challenge_post', 'aggregated_post']) && $globalSettingData['USER_GENERATED_POST'] == "0")  && !(isset($data['created_from']) && in_array($data['created_from'], ['customised_challenge_notification'])  && $globalSettingData['CUSTOMISED_CHALLENGE_NOTIFICATION'] == "0")){
                 // if(isset($data['created_from']) && in_array($data['created_from'], ['user_post'])){
                 //     $messagehubData = $this->messagehubRepository->getNotificationsWithSubCategory($message_id);
                 //     $data['title'] = $messagehubData->sub_cat_title;
@@ -745,9 +745,15 @@ class MessagehubManager
                     //get all active employers who have Automated Notifications
                     $this->processAutomatedNotifications($notifications->automated_type);
                 }else{
-                extract($this->messagehubRepository->getBrokerAndEmployerById($notifications->employers[0]));
-                extract($this->processNotifications($notifications->employers, $brokerId));
-            }
+                    extract($this->messagehubRepository->getBrokerAndEmployerById($notifications->employers[0]));
+
+                    $employerDetailsRepository = app()->make(EmployerDetailsRepository::class);
+                    $scheduleEmployersIDArr = $employerDetailsRepository->baseQuery(['app_status' => 'Active'], ['user_id'])->whereIn('user_id', $notifications->employers)->pluck('user_id')->toArray();
+                    if(!empty($scheduleEmployersIDArr)){
+                        $notifications->employers = $scheduleEmployersIDArr;
+                        extract($this->processNotifications($notifications->employers, $brokerId));
+                    }
+                }
             }
 
             //Remove record from scheduled list
@@ -795,7 +801,7 @@ class MessagehubManager
                 continue;
             }
             foreach($brokerIds as $brokerId){
-                $employerIds = array_column($this->getEmployerList([$brokerId],[], false, true), 'id');
+                $employerIds = array_column($this->getEmployerList([$brokerId],[], false, true, False, True), 'id');
                 Log::info("BROKER::". json_encode($brokerIds)." EMPLOYER::". json_encode($employerIds));
                 if(empty($employerIds)){
                     continue;
