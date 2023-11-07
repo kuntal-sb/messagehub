@@ -25,6 +25,7 @@ use App\Http\Repositories\AutomatedNotificationSettingRepository;
 use App\Http\Managers\ContentManager;
 use App\Http\Managers\AutomatedNotificationTemplateManager;
 use App\Http\Repositories\EmailTemplateRepository;
+use App\Http\Repositories\EmployerDetailsRepository;
 
 class MessagehubManager
 {
