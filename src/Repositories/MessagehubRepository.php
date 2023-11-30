@@ -1822,7 +1822,21 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
             //     $query = $query->join('app_instance_assigned','app_instance_assigned.user_id','=','users.id')->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
             // }
 
+            if (!$includeSpouseDependents) {
+                $query->join('app_instance_assigned', 'app_instance_assigned.user_id', '=', 'users.id');
+            } else {
+                $query->leftJoin('emplyoee_spouse', 'emplyoee_spouse.spouse_id', '=', 'users.id');
+                $query->join('app_instance_assigned', function($join){
+                    $join->on('app_instance_assigned.user_id', '=', 'users.id');
+                    $join->orOn('app_instance_assigned.user_id', '=', 'emplyoee_spouse.employee_id');
+                });
+            }
             if(!empty($appInstanceIds)){
+                $query->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
+            }
+            $query->join('app_instances', 'app_instance_assigned.app_instance_id', '=', 'app_instances.id');
+
+            /*if(!empty($appInstanceIds)){
                 if(!$includeSpouseDependents){
                     $query->join('app_instance_assigned','app_instance_assigned.user_id','=','users.id')
                         ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
@@ -1855,7 +1869,7 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
                     });
                 }
                 $query->join('app_instances', 'app_instance_assigned.app_instance_id', '=', 'app_instances.id');
-            }
+            }*/
 
             //filter record based on email if provided
             if(!empty($emails)){
@@ -1932,7 +1946,7 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
                 $query->join('app_instance_assigned','app_instance_assigned.user_id','=','users.id')
                     ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
             } else {
-                $query->where(function($q1) use ($appInstanceIds){
+                /*$query->where(function($q1) use ($appInstanceIds){
                     $q1->whereIn('users.id', function ($q2) use ($appInstanceIds) {
                         $q2->select('user_id')->from('app_instance_assigned')
                             ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
@@ -1943,7 +1957,14 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
                             ->join('app_instance_assigned','app_instance_assigned.user_id','=','emplyoee_spouse.employee_id')
                             ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
                         });
-                });
+                });*/
+
+                $query->leftJoin('emplyoee_spouse', 'emplyoee_spouse.spouse_id', '=', 'users.id')
+                   ->join('app_instance_assigned', function($join){
+                        $join->on('app_instance_assigned.user_id', '=', 'users.id');
+                        $join->orOn('app_instance_assigned.user_id', '=', 'emplyoee_spouse.employee_id');
+                    })
+                   ->whereIn('app_instance_assigned.app_instance_id', $appInstanceIds);
             }
         }
 
