@@ -695,10 +695,10 @@ class MessagehubManager
         return $this->messagehubRepository->getEmployeeCount($type, $employers, $filterTemplate, $appInstanceIds, $includeSpouseDependents, $includeDemoAccounts);
     }
 
-    public function getEmployerList($brokerList, $selectedEmployers = array(), $sms_enabled = false, $excludeBlockedEmployer = False, $onlyGamificationEmployer = False, $includeOnlyActiveEmployer = False)
+    public function getEmployerList($brokerList, $selectedEmployers = array(), $sms_enabled = false, $excludeBlockedEmployer = False, $onlyGamificationEmployer = False, $onlyRecognitionEmployer = false, $onlyRedeemptionEmployer= false, $includeOnlyActiveEmployer = False)
     {
         $this->messagehubRepository->setSmsEnabled($sms_enabled);
-        return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers, [], $excludeBlockedEmployer, $onlyGamificationEmployer, False, False, $includeOnlyActiveEmployer);
+        return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers, [], $excludeBlockedEmployer, $onlyGamificationEmployer,$onlyRecognitionEmployer, $onlyRedeemptionEmployer, $includeOnlyActiveEmployer);
     }
 
     public function getBrokerList($role)
@@ -802,7 +802,7 @@ class MessagehubManager
                 continue;
             }
             foreach($brokerIds as $brokerId){
-                $employerIds = array_column($this->getEmployerList([$brokerId],[], false, true, False, True), 'id');
+                $employerIds = array_column($this->getEmployerList([$brokerId],[], false, true, false, false, false, true), 'id');
                 Log::info("BROKER::". json_encode($brokerIds)." EMPLOYER::". json_encode($employerIds));
                 if(empty($employerIds)){
                     continue;
