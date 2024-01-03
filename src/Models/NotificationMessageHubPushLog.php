@@ -26,6 +26,7 @@ class NotificationMessageHubPushLog extends Model
         'status',
         'web_success',
         'web_status',
+        'device_type',
         'created_at',
         'updated_at',
     ];

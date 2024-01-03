@@ -660,7 +660,7 @@ class MessagehubRepository extends BaseRepository
                         $messageStatus = 'failed';
                     }
 
-                    $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $messageId,'message' => (string) $this->notificationData['message'],'title' => $this->notificationData['title'],'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'],'exception_message' => $exceptionMessage);
+                    $send_data = array('employee_id' => (string) $employeeId, 'employer_id' => (string) $employerId, 'message_id'=> (string) $messageId,'message' => (string) $this->notificationData['message'],'title' => $this->notificationData['title'],'is_flutter' => $is_flutter,'target_screen' => $this->notificationData['target_screen'],'exception_message' => $exceptionMessage, 'device_type' => !empty($this->notificationData['deviceType']) ? $this->notificationData['deviceType'] : null);
 
                     $logID = $this->insertNotificationLog($send_data, $messageId, $messageStatus);
 
@@ -1473,6 +1473,7 @@ class MessagehubRepository extends BaseRepository
                     'read_status'  => 0,
                     'is_success'   => 0,
                     'exception_message' => isset($data['exception_message'])?$data['exception_message']:'',
+                    'device_type' => isset($data['device_type'])? $data['device_type']: null,
                     'created_at'   => Carbon::now(), 
                     'updated_at'   => Carbon::now()
                     );
