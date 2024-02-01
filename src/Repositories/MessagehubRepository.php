@@ -1364,6 +1364,7 @@ class MessagehubRepository extends BaseRepository
             case 'weekly':
             case 'monthly':
             case 'yearly':
+            case 'last_business_day':
                 $eventData['is_custom'] = false;
                 break;
             case 'custom':
