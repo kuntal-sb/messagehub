@@ -283,7 +283,12 @@ class MessagehubRepository extends BaseRepository
         $employers = $this->getEmployersFilter($role, $userid);
         $notifications = $this->model;
 
-        $notifications = $notifications->where(function($query) use ($employers) {
+        if(!empty($employers)){
+            $messageIds = $this->getAllMessageIdForEmployer($employers);
+            $notifications = $notifications->whereIn('notifications_message_hub.id', $messageIds);
+        }
+
+        /*$notifications = $notifications->where(function($query) use ($employers) {
             $query->whereHas('pushNotifications', function (Builder $q) use ($employers){
                             if(!empty($employers)){
                                 $q->whereIn('employer_id', $employers);
@@ -299,9 +304,24 @@ class MessagehubRepository extends BaseRepository
                             $q->whereIn('employer_id', $employers);
                         }
                     });
-        });
+        });*/
 
         return $notifications->select(['notifications_message_hub.id','notifications_message_hub.message','notifications_message_hub.title','notifications_message_hub.notification_type','notifications_message_hub.created_at','notifications_message_hub.filter_value','notifications_message_hub.created_from','notifications_message_hub.created_as'])->orderBy('created_at', 'desc');
+    }
+
+    /**
+     * getAllMessageIdForEmployer.
+     * @param employerArr
+     * @return  message id array
+     */
+    public function getAllMessageIdForEmployer($employerArr)
+    {
+        $employers = '('.implode(",",$employerArr).')';
+
+        $query = "SELECT message_id from (SELECT  notifications_message_hub_push_log.message_id FROM `notifications_message_hub_push_log` WHERE  `employer_id` IN ".$employers." GROUP BY message_id UNION SELECT  notifications_message_hub_text_log.message_id FROM `notifications_message_hub_text_log` WHERE  `employer_id` IN ".$employers." GROUP BY message_id UNION SELECT  notifications_message_hub_email_log.message_id FROM `notifications_message_hub_email_log` WHERE  `employer_id` IN ".$employers." GROUP BY message_id) AS t";
+
+        $result = DB::select($query);
+        return array_column($result, 'message_id');
     }
 
     /**
