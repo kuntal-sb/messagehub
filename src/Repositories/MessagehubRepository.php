@@ -2100,12 +2100,18 @@ SUM(case when (read_status = 1 AND engaged_status=1) then 1
      * @param $role
      * @return Array $Brokers List
      */
-    public function getBrokerList($role)
+    public function getBrokerList($role, $request = [])
     {
         $brokers = [];
         if($role == config('role.ADMIN')){
-            $brokers = User::join('brokerdetails','users.id', '=', 'brokerdetails.user_id')
-                        ->where('users.is_active', '=', 1)
+            $brokers = User::join('brokerdetails','users.id', '=', 'brokerdetails.user_id');
+
+            if(!empty($request['app_id'])) {
+                $brokers->join('app', 'app.id', '=', 'brokerdetails.assigned_app')
+                ->where('brokerdetails.assigned_app', $request['app_id']);
+            }
+
+            return $brokers->where('users.is_active', '=', 1)
                         ->select('users.id','users.company_name', 'users.first_name', 'users.last_name', 'users.email', 'users.phone', 'users.mobile', 'users.last_login')->get()->toArray();
         }
         return $brokers;

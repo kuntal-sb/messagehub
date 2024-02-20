@@ -701,9 +701,9 @@ class MessagehubManager
         return $this->messagehubRepository->getEmployerList($brokerList, $selectedEmployers, [], $excludeBlockedEmployer, $onlyGamificationEmployer,$onlyRecognitionEmployer, $onlyRedeemptionEmployer, $includeOnlyActiveEmployer);
     }
 
-    public function getBrokerList($role)
+    public function getBrokerList($role, $request = [])
     {
-        return $this->messagehubRepository->getBrokerList($role);
+        return $this->messagehubRepository->getBrokerList($role, $request);
     }
 
     /** 
