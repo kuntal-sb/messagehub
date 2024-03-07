@@ -799,6 +799,14 @@ class MessagehubRepository extends BaseRepository
                 $employees = $employeeList = $userRepository->getByWhereIn($this->notificationData['employees'], 'id', [], ['id','username','first_name','last_name','email']);
             }
 
+            //If logged in as admin/broker, get all email template ids from applicable employer list by selected email template type
+            $emailTemplateIds = [];
+            if (!$this->notificationData['loggedinAsEmployer']) {
+                $emailTemplateIds = DB::table('emailtemplates')->whereIn('user_id', $employerList)
+                    ->where('emailtemplate_type', $this->notificationData['emailtemplate_type'])
+                    ->select('id')->get()->pluck('id')->toArray();
+            }
+
             $chunkEmployerList = array_chunk($employerList, 2);
 
             foreach($chunkEmployerList as $employerList){
@@ -807,17 +815,37 @@ class MessagehubRepository extends BaseRepository
                     if(empty($employeeList)){
                         $employees = $this->getEmployeeList(config('messagehub.notification.type.EMAIL'), [$employerId], [], [], $filterTemplate, $appInstanceIds,$this->notificationData['includeSpouseDependents'],[],$this->notificationData['includeDemoAccounts']);
                     }
-                    //Task: https://strive.atlassian.net/browse/BP-3607 16-Aug-2023
-                    /*if($this->notificationData['notification_type'] == config('messagehub.notification.type.EMAIL')){
-                        foreach($employees as $index => $employee){
-                            $checkUnsubscribe = DB::table('unsubscribes')->where('user_id',$employee['id'])
-                                                ->where('emailtemplate_id',base64_decode($this->notificationData['email_template']))
-                                                ->where('is_unsubscribe','1')->first();
-                            if($checkUnsubscribe){
-                                unset($employees[$index]);
-                            }
+
+                    // https://strive.atlassian.net/browse/BP-5109
+                    // Fetch unsubscribe users for specific email type and unset that user from receiver list before sending email notification,
+                    if ($this->notificationData['notification_type'] == config('messagehub.notification.type.EMAIL')) {
+                        $employeeIdList = array_column($employees, 'id');
+                        //If above fetched email template ids is not empty, then consider all of those for finding unsubscribe users 
+                        if (!empty($emailTemplateIds)) {
+                            $unsubscribeIds = DB::table('unsubscribes')->whereIn('user_id', $employeeIdList)
+                                ->whereIn('emailtemplate_id', $emailTemplateIds)
+                                ->where('is_unsubscribe', '1')->select('user_id')->get();
+                        } else {
+                            $unsubscribeIds = DB::table('unsubscribes')->whereIn('user_id', $employeeIdList)
+                                ->where('emailtemplate_id', base64_decode($this->notificationData['email_template']))
+                                ->where('is_unsubscribe', '1')->select('user_id')->get();
                         }
-                    }*/
+
+                        if ($unsubscribeIds->isNotEmpty()) {
+                            $unsubscribeIdsToRemove = $unsubscribeIds->pluck('user_id')->all();
+                            $employees = array_map(function ($user) use ($unsubscribeIdsToRemove) {
+                                // Check if the user ID is not in the $unsubscribeIdsToRemove array
+                                if (!in_array($user['id'], $unsubscribeIdsToRemove)) {
+                                    return $user;
+                                }
+                            }, $employees);
+
+                            // Remove null values from the resulting array and reset array keys
+                            $employees = array_filter($employees);
+                            $employees = array_values($employees);
+                        }
+                    }
+
                     $batchList[] = new ProcessBulkEmailNotification($employerId, $employees, $this->notificationData);
                 }
                 Bus::batch([
@@ -852,8 +880,13 @@ class MessagehubRepository extends BaseRepository
                 $notificationMessageId = $this->addNotification($employerId, true);
             }
 
-            foreach ($employees as $employee) {
+            // https://strive.atlassian.net/browse/BP-5109
+            // Fetch email template type being sent in email notification, to check further to add unsubscribe link in email
+            $templateId = !empty($this->notificationData['email_template']) ? base64_decode($this->notificationData['email_template']) : null; 
+            $templateData = !empty($templateId) ? $this->templateManager->getTemplate($templateId) : null;
+            $templateType = $templateData->emailtemplate_type ?? null;
 
+            foreach ($employees as $employee) {
                 $email_subject = $this->notificationData['email_subject'];
                 $email_body = $this->notificationData['email_body'];
 
@@ -867,6 +900,7 @@ class MessagehubRepository extends BaseRepository
                             'email_subject' => $email_subject,
                             'email_template' => $this->notificationData['email_template'],
                             'email_body' => $email_body,
+                            'emailtemplate_type' => $templateType,
                             'message_id' => $notificationMessageId,
                             'unsubscribe_flag' => $this->notificationData['unsubscribe_flag']];
 
