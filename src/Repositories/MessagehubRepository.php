@@ -819,6 +819,7 @@ class MessagehubRepository extends BaseRepository
                     // https://strive.atlassian.net/browse/BP-5109
                     // Fetch unsubscribe users for specific email type and unset that user from receiver list before sending email notification,
                     if ($this->notificationData['notification_type'] == config('messagehub.notification.type.EMAIL')) {
+                        $employees = is_array($employees) ? $employees : $employees->all();
                         $employeeIdList = array_column($employees, 'id');
                         //If above fetched email template ids is not empty, then consider all of those for finding unsubscribe users 
                         if (!empty($emailTemplateIds)) {
